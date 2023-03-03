@@ -1,0 +1,1 @@
+This is the directory where all the previous outputs are archived to. Feel free to delete this file when PAF-UP is in operation.

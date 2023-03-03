@@ -1,0 +1,21 @@
+#!/bin/bash
+echo "" #gap between log entries
+date -u #prints the date out for the log
+
+#move yesterday's outputs to the archive
+yesterday=$(date -u --date="yesterday" +'%Y%m%d') #yesterday's date in utc
+mkdir zARCHIVE/${yesterday} #makes folder for yesterday's outputs in archive
+mv -r xOUTPUTS/* zARCHIVE/${yesterday} #moves outputs to the folder
+
+### BILLY ###
+python BILLY/tns_update.py #run python script to update the local TNS database
+
+### LUCY ###
+python LUCY/pscores.py #make the new priorty score lists
+
+### MR. KITE ###
+python MR_KITE/attachments.py #make the email attachments
+python MR_KITE/email_alert.py #send the email alert
+
+### RITA ###
+python RITA/followup.py #request observations from LT

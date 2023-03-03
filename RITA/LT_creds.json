@@ -1,0 +1,10 @@
+{
+    "username": "",      
+    "rtmlpass": "",     
+    "proposal": "",      
+    "prefix": "",
+    "LT_HOST": "",       
+    "LT_PORT": "",       
+    "PKLFILE": "pickle", 
+    "DEBUG": "False"     
+}
