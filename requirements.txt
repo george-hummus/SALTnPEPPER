@@ -1,3 +1,5 @@
 skyfield
 smtplib
 astropy
+suds-py3
+lxml

@@ -13,6 +13,8 @@
 ### Instructions
 - Copy the whole file structure to your device.
 - Fill out the credential files (bot_info.json, email_creds.json, and LT_creds.json) with the required information.
+- Add email addresses to correspondents.csv (one per line!)
 - Install the required packages using requirements.txt via `pip install -r requirements.txt`.
-- Download `ltrtml` from [here](https://github.com/LivTel/ltpy) and put ltrtml in the RITA directory.
+- Download `ltrtml` from [here](https://github.com/LivTel/ltpy) and put ltrtml.py in the RITA directory.
+- `chmod +x PAFUP`
 - Use cron tab to automate PAF-UP to run every night. E.g., `10 01 * * * cd {your path to PAF-UP directory}; bash PAFUP >> PAFUP.log 2>&1` will run PAF-UP every day at 01:10 local time.

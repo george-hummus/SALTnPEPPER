@@ -1,5 +1,5 @@
 """
-Functions thay tns_update.py and fastslow.py depend on to operate.
+The functions that are used in all the modules of PAF-UP.
 
 Author: George Hume
 2023
@@ -7,6 +7,7 @@ Author: George Hume
 
 ### IMPORTS ###
 import csv
+import json
 import numpy as np
 import datetime as dt
 from skyfield import almanac
@@ -681,7 +682,7 @@ def LTcoords(RA, DEC):
     #convert all coordinates into strings with units hmsdms
     cstr = coords.to_string("hmsdms")
 
-    Ra = Dec = [] #empty lists to newly formatted RA and DEC to
+    Ra, Dec = [], [] #empty lists to newly formatted RA and DEC to
 
     for i in range(RA.size):
 
@@ -700,9 +701,9 @@ def LTcoords(RA, DEC):
         dec = "".join(dec)
 
         #add to lists
-        RA.append(ra)
+        Ra.append(ra)
         Dec.append(dec)
 
-    return ra, dec
+    return Ra, Dec
 
 ################################################################################

@@ -13,7 +13,7 @@ import datetime as dt
 import json
 import sys
 sys.path.append('..')
-from PAFUP_funcs import loadDB
+from PAFUP_funcs import loadDB, LTcoords
 
 
 ### Set up targets ###

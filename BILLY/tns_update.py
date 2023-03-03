@@ -5,9 +5,11 @@ Author: George Hume
 2023
 """
 
+import os
 import json
 import datetime as dt
 import sys
+import glob
 sys.path.append('..')
 from PAFUP_funcs import loadDB, dload, UPdate
 
@@ -15,7 +17,7 @@ from PAFUP_funcs import loadDB, dload, UPdate
 with open('bot_info.json') as json_file:
     info = json.load(json_file)
 
-if len(glob.glob("../xOUTPUTS/tns_public_objects.csv")) == 0:
+if not os.path.isfile("../xOUTPUTS/tns_public_objects.csv"):
 	#if there is no local database present download it from the TNS
 	dload("tns_public_objects.csv",info)
 

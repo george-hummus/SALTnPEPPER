@@ -5,17 +5,28 @@ date -u #prints the date out for the log
 #move yesterday's outputs to the archive
 yesterday=$(date -u --date="yesterday" +'%Y%m%d') #yesterday's date in utc
 mkdir zARCHIVE/${yesterday} #makes folder for yesterday's outputs in archive
-mv -r xOUTPUTS/* zARCHIVE/${yesterday} #moves outputs to the folder
+mv xOUTPUTS/* zARCHIVE/${yesterday} #moves outputs to the folder
+mv zARCHIVE/${yesterday}/tns_public_objects.csv xOUTPUTS
+mv zARCHIVE/${yesterday}/observations.json xOUTPUTS #move these back as they are always updated
+
+homedir=$(pwd) #the home directory to return to once module is finished
 
 ### BILLY ###
-python BILLY/tns_update.py #run python script to update the local TNS database
+cd ${homedir}/BILLY
+python tns_update.py #run python script to update the local TNS database
+cd ${homedir}
 
 ### LUCY ###
-python LUCY/pscores.py #make the new priorty score lists
+cd ${homedir}/LUCY
+python pscores.py #make the new priorty score lists
+cd ${homedir}
 
 ### MR. KITE ###
-python MR_KITE/attachments.py #make the email attachments
-python MR_KITE/email_alert.py #send the email alert
+cd ${homedir}/MR_KITE
+python attachments.py #make the email attachments
+python email_alert.py #send the email alert
+cd ${homedir}
 
 ### RITA ###
-python RITA/followup.py #request observations from LT
+cd ${homedir}/RITA
+python followup.py #request observations from LT

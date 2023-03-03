@@ -20,7 +20,6 @@ sys.path.append('..')
 from PAFUP_funcs import loadDB
 
 
-
 ### HTML TABLE ###
 
 dummy, headers, fastDB = loadDB("../xOUTPUTS/transient_list-F.csv")
@@ -30,7 +29,7 @@ try: #may not be possible if databse is empty
     df['fink_url'] = '<a href=' + df['fink_url'] + '><div>' + df['fink_url'] +'</div></a>' #makes fink url clickable
     df['name'] = '<a href=' + "https://www.wis-tns.org/object/" + df['name'] + '><div>' + df['name'] +'</div></a>' #click tns name to take to website
     html = df.to_html(escape=False, justify = "left",index = False)
-    with open(".../xOUTPUTS/transient_list-F.html", "w") as file:
+    with open("../xOUTPUTS/transient_list-F.html", "w") as file:
         file.write(html)
 except:
     print("HTML table failed")
@@ -65,10 +64,22 @@ t1 = ts.from_datetime(tomorrow)
 with open('../xOUTPUTS/solar_times.json') as json_file:
     sdict = json.load(json_file)
 #save them as time objects in skyfield
-sunset = ts.utc(sdict["nightstart_date"][0:4], sdict["nightstart_date"][5:7], sdict["nightstart_date"][8:], sdict["sunset"][0:2], sdict["sunset"][3:5], sdict["sunset"][6:])
-darkstart = ts.utc(sdict["nightstart_date"][0:4], sdict["nightstart_date"][5:7], sdict["nightstart_date"][8:], sdict["darkstart"][0:2], sdict["darkstart"][3:5], sdict["darkstart"][6:])
-darkend = ts.utc(sdict["nightend_date"][0:4], sdict["nightend_date"][5:7], sdict["nightend_date"][8:], sdict["darkend"][0:2], sdict["darkend"][3:5], sdict["darkend"][6:])
-sunrise = ts.utc(sdict["nightend_date"][0:4], sdict["nightend_date"][5:7], sdict["nightend_date"][8:], sdict["sunrise"][0:2], sdict["sunrise"][3:5], sdict["sunrise"][6:])
+sunset = ts.utc(
+int(sdict["nightstart_date"][0:4]), int(sdict["nightstart_date"][5:7]), int(sdict["nightstart_date"][8:]),
+int(sdict["sunset"][0:2]), int(sdict["sunset"][3:5]), int(sdict["sunset"][6:])
+)
+darkstart = ts.utc(
+int(sdict["nightstart_date"][0:4]), int(sdict["nightstart_date"][5:7]), int(sdict["nightstart_date"][8:]),
+int(sdict["darkstart"][0:2]), int(sdict["darkstart"][3:5]), int(sdict["darkstart"][6:])
+)
+darkend = ts.utc(
+int(sdict["nightend_date"][0:4]), int(sdict["nightend_date"][5:7]), int(sdict["nightend_date"][8:]),
+int(sdict["darkend"][0:2]), int(sdict["darkend"][3:5]), int(sdict["darkend"][6:])
+)
+sunrise = ts.utc(
+int(sdict["nightend_date"][0:4]), int(sdict["nightend_date"][5:7]), int(sdict["nightend_date"][8:]),
+int(sdict["sunrise"][0:2]), int(sdict["sunrise"][3:5]), int(sdict["sunrise"][6:])
+)
 
 #set up figure
 fig, ax = plt.subplots(1,2,figsize=(20,10))

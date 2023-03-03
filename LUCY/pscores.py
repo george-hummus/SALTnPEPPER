@@ -13,6 +13,7 @@ Author: George Hume
 import csv
 import numpy as np
 import datetime as dt
+import sys
 sys.path.append('..')
 from PAFUP_funcs import loadDB, flatten, priority_list
 

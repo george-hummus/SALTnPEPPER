@@ -14,6 +14,10 @@ from email.mime.image import MIMEImage
 import os
 from datetime import datetime
 import csv
+import json
+import sys
+sys.path.append('..')
+from PAFUP_funcs import loadDB
 
 #list of emails addresses to send the email to as CSV file
 file=open("correspondents.csv")
@@ -81,7 +85,7 @@ html_part = MIMEText(fulltxt,'html')
 message.attach(html_part)
 
 #attach visiblity plots
-imagename = f"../xOUTPUTS/top_visplots.jpg"
+imagename = "../xOUTPUTS/top_visplots.jpg"
 with open(imagename, 'rb') as f:
     imagepart = MIMEImage(f.read())
 message.attach(imagepart)
