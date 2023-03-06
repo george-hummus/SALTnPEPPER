@@ -30,3 +30,4 @@ cd ${homedir}
 ### RITA ###
 cd ${homedir}/RITA
 python followup.py #request observations from LT
+pyhton dummy-trigger.py
