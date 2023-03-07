@@ -11,9 +11,10 @@ import ltrtml
 import numpy as np
 import datetime as dt
 import json
+import csv
 import sys
 sys.path.append('..')
-from PAFUP_funcs import loadDB, LTcoords
+from PAFUP_funcs import loadDB, LTcoords, csv2list
 
 
 ### Set up targets ###
@@ -21,18 +22,34 @@ from PAFUP_funcs import loadDB, LTcoords
 # load in the PEPPER Fast priority list CSV file
 info, headers, flist = loadDB("../xOUTPUTS/transient_list-F.csv")
 
+# load in the black list
+blist = csv2list("black_list.csv")
+
+#remove any entries from the list which are in the black list
+bad_idx = [] #empty list to add bad indices to
+for idx, entry in enumerate(flist):
+    if (entry[1]+entry[2]) in blist: #check if transient name is in black_list
+        bad_idx.append(idx) #if it is append to bad indices list
+flist = np.delete(flist,bad_idx,0) #deletes bad rows
+
 if flist.shape[0] == 0: #check if there are targets in the list
     print("No sutible targets to request observations of.")
+    with open("../xOUTPUTS/requests.json","w") as fp: # make json blank
+        fp.write("")
 
 else: #if there are targets then can submit observations to the LT
 
     ### Extract targets to request observations of ###
-    #only extract targets with a priorty score < 0.5
-    bad_idx = [] #empty list to add bad indices to
-    for idx, entry in enumerate(flist):
-        if float(entry[-2]) > 0.5: #check the pscore the target
-            bad_idx.append(idx) #if greater than 0.5 append to bad indices list
-    top = np.delete(flist,bad_idx,0) #deletes bad rows
+    #only extract targets with a priorty scores less than 0.5 and if min > 0.5 then the first target
+    pmin = np.min(flist.T[-2].astype(float))
+    if pmin < 0.5:
+        bad_idx = [] #empty list to add bad indices to
+        for idx, entry in enumerate(flist):
+            if float(entry[-2]) > 0.5: #check the pscore the target
+                bad_idx.append(idx) #if greater than 0.5 append to bad indices list
+        top = np.delete(flist,bad_idx,0) #deletes bad rows
+    else:
+        top = np.array([flist[0]])
 
     #create list of dicts containing the transients names and RA and Dec in correct format for ltrtml
     names = top.T[1]+top.T[2]
@@ -121,14 +138,14 @@ else: #if there are targets then can submit observations to the LT
 
         #append dict to JSON of previous observations
         try: #try to open obs json if it exisits
-            with open(f"../xOUTPUTS/observations.json","r") as fp: #read and write
+            with open("../xOUTPUTS/observations.json","r") as fp: #read and write
                 allobs = json.load(json_file)
         except: #if it doesn't exisit create a new one
             allobs = {}
 
         #add observations the dict (with date as key) and save as a JSON
         allobs[sdate] = obs_dict
-        with open(f"../xOUTPUTS/observations.json","w") as fp: # write
+        with open("../xOUTPUTS/observations.json","w") as fp: # write
             json.dump(allobs, fp, indent=4)
 
     except:

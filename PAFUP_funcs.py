@@ -663,6 +663,26 @@ def priority_list(database,date,Slow=True):
 
         return targets
 
+################################################################################
+
+def csv2list(fname):
+    """
+    This function takes in anysimple CSV file where each row contains a single entry and converts it into a list.
+    Arguments:
+        - fname: the path to the CSV file
+    Output:
+        - lst: a list where each element is a row of the CSV file
+    """
+    with open(fname) as file:
+        lst = []
+        csvreader = csv.reader(file)
+        for row in csvreader:
+            try:
+                lst.append(row[0])
+            except: #skips any blank rows
+                continue
+    return lst
+
 ######################### FUNCTIONS FOR FOLLOW-UP ##############################
 
 def LTcoords(RA, DEC):

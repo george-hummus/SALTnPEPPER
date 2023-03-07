@@ -17,15 +17,10 @@ import csv
 import json
 import sys
 sys.path.append('..')
-from PAFUP_funcs import loadDB
+from PAFUP_funcs import loadDB, csv2list
 
 #list of emails addresses to send the email to as CSV file
-file=open("correspondents.csv")
-correspondents = []
-csvreader = csv.reader(file)
-for row in csvreader:
-    	correspondents.append(row[0]) #save all rows into a list
-file.close()
+correspondents = csv2list("correspondents.csv")
 
 #get dates from slow transient list (assume same as fast one)
 info, dummy, slowDB = loadDB("../xOUTPUTS/transient_list-S.csv")

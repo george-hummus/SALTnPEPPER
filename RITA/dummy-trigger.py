@@ -17,15 +17,10 @@ import csv
 import json
 import sys
 sys.path.append('..')
-from PAFUP_funcs import loadDB
+from PAFUP_funcs import loadDB, csv2list
 
 #list of emails addresses to send the email to as CSV file
-file=open("../MR_KITE/correspondents.csv")
-correspondents = []
-csvreader = csv.reader(file)
-for row in csvreader:
-    	correspondents.append(row[0]) #save all rows into a list
-file.close()
+correspondents = csv2list("../MR_KITE/correspondents.csv")
 
 date = datetime.now().strftime('%Y-%m-%d') #date to put in the subject
 
@@ -34,40 +29,38 @@ message['Subject'] = f"Observation requests for {date}"
 message['From'] = "PEPPER Automated Follow-Up Observations <noreply>"
 message['To'] = "PEPPER Survey Collaborators"
 
-#check if there would of been any requests made
-dummy, dummy2, fastDB = loadDB("../xOUTPUTS/transient_list-F.csv")
-if fastDB.size == 0:
+#check if there would of been any requests made by loking at json
+with open("../xOUTPUTS/requests.json", "r") as attachment:
+    # Add the attachment to the message
+    jfile = attachment.read()
+
+if len(jfile) == 0:
     #no tranisents met threshold so none could be requested
 
-    html_part = "<p><font color=#FF0000><em> No transients met the requirements for PEPPER Fast tonight, so no observations were requested. </em></font> <br><br> <em>PEPPER Automated Follow-Up Observations</em></p>"
-    message.attach(MIMEText(html_part,'html'))
+    html_part = "<p><font color=#FF0000><em> No transients met the requirements for PEPPER Fast tonight, so no observations were requested. </em></font> <br><br> <em>PEPPER Automated Follow-Up Observations</em> </p>"
 
 else:
     #requests were made so attach the json of the requests and send
-    html_part = "<p> Here are the transients that would have been requested for observations with MOPTOP. <br><br> <em>PEPPER Automated Follow-Up Observations</em></p>"
-    message.attach(MIMEText(html_part,'html'))
+    html_part = "<p> Below are the dictonaries that would have formed the observation requests. It detials the targets requested, the intrument set-up, and any constraints. <br><br> <em>PEPPER Automated Follow-Up Observations</em></p>"
 
 
-    with open("../xOUTPUTS/requests.json", "rb") as attachment:
-    # Add the attachment to the message
-        part = MIMEBase("application", "octet-stream")
-        part.set_payload((attachment).read())
-    encoders.encode_base64(part)
-    part.add_header("Content-Disposition",f'attachment; filename= {os.path.basename("requests.json")}')
-    message.attach(part)
+message.attach(MIMEText(html_part,'html'))
+
+#add json as plain text to email
+message.attach(MIMEText(jfile))
 
 
-    ### SEND EMAIL ###
-    try:
-        #email credentials
-        with open('../MR_KITE/email_creds.json') as json_file:
-            creds = json.load(json_file)
-        #set up email
-        smtpObj = smtplib.SMTP_SSL('smtp.gmail.com', 465)
-        smtpObj.login(creds["email"],creds["password"])
+### SEND EMAIL ###
+try:
+    #email credentials
+    with open('../MR_KITE/email_creds.json') as json_file:
+        creds = json.load(json_file)
+    #set up email
+    smtpObj = smtplib.SMTP_SSL('smtp.gmail.com', 465)
+    smtpObj.login(creds["email"],creds["password"])
 
-        smtpObj.sendmail(creds["email"], correspondents, message.as_string())
-        print("email sent")
+    smtpObj.sendmail(creds["email"], correspondents, message.as_string())
+    print("email sent")
 
-    except:
-        print("email failed")
+except:
+    print("email failed")
