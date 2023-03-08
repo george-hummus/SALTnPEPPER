@@ -31,3 +31,4 @@ cd ${homedir}
 cd ${homedir}/RITA
 python followup.py #request observations from LT
 python dummy-trigger.py
+python obs_check.py 
