@@ -63,6 +63,11 @@ else: #if there are targets then can submit observations to the LT
     for i in range(len(ra)):
         targets.append( {"name":names[i],"RA":ra[i],"DEC":dec[i]} )
 
+    #load in the observating parameters
+    # open file containing the times sunset/rise and twilight times for the night ahead
+    with open('obs_prams.json') as json_file:
+        obs_prams = json.load(json_file)
+
 
     ### Set up constraints ###
     # we want to request the observations as soon as we get the list so constraints in time will be from when released to start of morning twilight on the next day (over 24hrs away if release at 01:10 local time)
@@ -81,14 +86,14 @@ else: #if there are targets then can submit observations to the LT
 
     # make the constraints dict
     constraints = {
-        'air_mass': '1.74',           # 1.7 airmass corresponds to 35deg alt
-        'sky_bright': '1.0',          # We dont need a max as are targets shouldn't be near the moon
-        'seeing': '1.2',              # Maximum allowable FWHM seeing in arcsec (ask J)
-        'photometric': 'yes',         # Photometric conditions, ['yes', 'no'] (ask J - probs yes)
-        'start_date': sdate,          # Start Date should be today
-        'start_time': stime,          # Start Time should be when darktime starts
-        'end_date': edate,            # End Date should be next day
-        'end_time': etime,            # End Time when
+        'air_mass': obs_prams['air_mass'],      # 1.74 airmass corresponds to 35deg alt
+        'sky_bright': obs_prams['sky_bright'], # any as targets shouldn't be near moon
+        'seeing': obs_prams["seeing"],        # Maximum allowable FWHM seeing in arcsec
+        'photometric': 'yes',                # Photometric conditions, ['yes', 'no']
+        'start_date': sdate,                # Start Date should be today
+        'start_time': stime,               # Start Time should be when darktime starts
+        'end_date': edate,                # End Date should be next day
+        'end_time': etime,               # End Time when
     }
 
 
@@ -97,13 +102,12 @@ else: #if there are targets then can submit observations to the LT
 
     # make a list of observation dicts for each target
     obs = []
-
     for target in targets:
         observation = {
             'instrument': 'Moptop',
             'target': target,
-            'filters': {'R': {'exp_time': '880',    # Exposure time is 880 seconds
-                              'rot_speed': 'slow'}}}  # Rotor speed is slow
+            'filters': {obs_prams["filter"]: {'exp_time': obs_prams['exp_time'],
+                              'rot_speed': obs_prams['rot_speed']}}}
         obs.append(observation)
 
 
@@ -125,15 +129,13 @@ else: #if there are targets then can submit observations to the LT
         obs_object = ltrtml.LTObs(settings)
 
 
-        ### Send Observation request and save group ids ###
+        ### Send Observation request and save the user id ###
         uid, error = obs_object.submit_group(obs, constraints) #real
 
-        #make dictonary with uids as keys and target info
+        #make dictonary with uid as keys and targets and erros as info
         obs_dict = {}
-        for i, target in enumerate(targets):
-            obs_dict[str(uid[i])] = target
-
-        #save any errors to the dict also
+        obs_dict["uid"] = uid
+        obs_dict["targets"] = targets
         obs_dict["errors"] = error
 
         #append dict to JSON of previous observations
