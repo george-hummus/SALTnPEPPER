@@ -33,7 +33,7 @@ topline = [f"List calculated for {todaySTR} using TNS database from {date}"]
 fastDB = priority_list(database,date,False)
 
 #save out fast database CSV
-filename = "../xOUTPUTS/transient_list-F.csv"
+filename = f"../xOUTPUTS/TransientList_F_{Tday.strftime('%Y%m%d')}.csv"
 with open(filename, 'w') as file:
     csvwriter = csv.writer(file,delimiter=",") # create a csvwriter object
     csvwriter.writerow(topline)
@@ -45,7 +45,7 @@ with open(filename, 'w') as file:
 slowDB = priority_list(database,date)
 
 #save out the slow database CSV
-filename = "../xOUTPUTS/transient_list-S.csv"
+filename = f"../xOUTPUTS/TransientList_S_{Tday.strftime('%Y%m%d')}.csv"
 with open(filename, 'w') as file:
     csvwriter = csv.writer(file,delimiter=",") # create a csvwriter object
     csvwriter.writerow(topline)

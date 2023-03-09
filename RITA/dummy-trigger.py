@@ -16,6 +16,7 @@ from datetime import datetime
 import csv
 import json
 import sys
+import glob
 sys.path.append('..')
 from PAFUP_funcs import loadDB, csv2list
 
@@ -30,7 +31,7 @@ message['From'] = "PEPPER Automated Follow-Up Observations <noreply>"
 message['To'] = "PEPPER Survey Collaborators"
 
 #check if there would of been any requests made by loking at json
-with open("../xOUTPUTS/requests.json", "r") as attachment:
+with open(glob.glob("../xOUTPUTS/requests*.json")[0], "r") as attachment:
     # Add the attachment to the message
     jfile = attachment.read()
 

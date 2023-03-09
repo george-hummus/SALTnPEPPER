@@ -19,29 +19,28 @@ import sys
 sys.path.append('..')
 from PAFUP_funcs import loadDB
 
+# DATES #
+today = dt.datetime.combine(dt.datetime.now(), dt.datetime.min.time()) + dt.timedelta(days=0.5)
+today =today.replace(tzinfo=utc)
+tomorrow = today + dt.timedelta(days=1) #next day at midday
+tomorrow = tomorrow.replace(tzinfo=utc)
 
 ### HTML TABLE ###
 
-dummy, headers, fastDB = loadDB("../xOUTPUTS/transient_list-F.csv")
+dummy, headers, fastDB = loadDB(f"../xOUTPUTS/TransientList_F_{today.strftime('%Y%m%d')}.csv")
 
 try: #may not be possible if databse is empty
     df = pd.DataFrame(fastDB, columns = headers)
     df['fink_url'] = '<a href=' + df['fink_url'] + '><div>' + df['fink_url'] +'</div></a>' #makes fink url clickable
     df['name'] = '<a href=' + "https://www.wis-tns.org/object/" + df['name'] + '><div>' + df['name'] +'</div></a>' #click tns name to take to website
     html = df.to_html(escape=False, justify = "left",index = False)
-    with open("../xOUTPUTS/transient_list-F.html", "w") as file:
+    with open(f"../xOUTPUTS/TransientList_F_{today.strftime('%Y%m%d')}.html", "w") as file:
         file.write(html)
 except:
     print("HTML table failed")
 
 
 ### VISIBILITY PLOTS ###
-
-# DATES #
-today = dt.datetime.combine(dt.datetime.now(), dt.datetime.min.time()) + dt.timedelta(days=0.5)
-today =today.replace(tzinfo=utc)
-tomorrow = today + dt.timedelta(days=1) #next day at midday
-tomorrow = tomorrow.replace(tzinfo=utc)
 
 #location of Liverpool Telescope
 lat = 28.6468866 #latitude in degs
@@ -84,7 +83,7 @@ int(sdict["sunrise"][0:2]), int(sdict["sunrise"][3:5]), int(sdict["sunrise"][6:]
 #set up figure
 fig, ax = plt.subplots(1,2,figsize=(20,10))
 
-lists = ["transient_list-F.csv", "transient_list-S.csv"]
+lists = [f"TransientList_F_{today.strftime('%Y%m%d')}.csv", f"TransientList_S_{today.strftime('%Y%m%d')}.csv"]
 
 for j, fname in enumerate(lists):
     ## format the plots ##
@@ -113,7 +112,7 @@ for j, fname in enumerate(lists):
     ax[j].set_ylabel("Altitude (degrees)")
     ax[j].set_xlim((sunset.utc_datetime(),sunrise.utc_datetime()))
     ax[j].set_ylim(0,90)
-    ax[j].set_title(f"Visibility of highest priority transients from {fname} during dark time on La Palma ({today.strftime('%Y-%m-%d')})")
+    ax[j].set_title(f"Visibility of highest priority transients from {fname[0:15]} during dark time on La Palma ({today.strftime('%Y-%m-%d')})")
 
     ax[j].grid(linestyle = ':')
 
@@ -168,5 +167,5 @@ for j, fname in enumerate(lists):
 
 #save
 plt.tight_layout()
-plt.savefig("../xOUTPUTS/top_visplots.jpg",dpi=600)
+plt.savefig(f"../xOUTPUTS/top_visplots_{today.strftime('%Y%m%d')}.jpg",dpi=600)
 plt.close()

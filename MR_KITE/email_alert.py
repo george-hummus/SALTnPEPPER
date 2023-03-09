@@ -16,29 +16,38 @@ from datetime import datetime
 import csv
 import json
 import sys
+import glob
 sys.path.append('..')
 from PAFUP_funcs import loadDB, csv2list
 
 #list of emails addresses to send the email to as CSV file
 correspondents = csv2list("correspondents.csv")
 
+plists =[]
+
 #get dates from slow transient list (assume same as fast one)
-info, dummy, slowDB = loadDB("../xOUTPUTS/transient_list-S.csv")
+slowlist = glob.glob("../xOUTPUTS/TransientList_S*")[0]
+plists.append(slowlist)
+info, dummy, slowDB = loadDB(slowlist)
 
 list_date = info[20:30] #date for which priority list was created
 tns_date = info[-19:-9] #date of last update of TNS database
 
 # check the size of the databases
-dummy, dummy2, fastDB = loadDB("../xOUTPUTS/transient_list-F.csv")
+fastlist = glob.glob("../xOUTPUTS/TransientList_F*.csv")[0]
+plists.append(fastlist)
+dummy, dummy2, fastDB = loadDB(fastlist)
+
+flistHTML = glob.glob("../xOUTPUTS/TransientList_F*.html")[0]
 
 if fastDB.size == 0:
     #if no transients met the requirements replace table with notice
-    with open("../xOUTPUTS/transient_list-F.html", "w") as file:
+    with open(flistHTML, "w") as file:
         file.write("<p><font color=#FF0000><em> No transients met the requirements for PEPPER Fast tonight. </em></font></p><br>")
 
 if slowDB.size == 0:
     #if no targets in slow list there will be none is faste either
-    with open("../xOUTPUTS/transient_list-F.html", "w") as file:
+    with open(flistHTML, "w") as file:
         file.write("<p><font color=#FF0000><em> No transients met the requirements for either PEPPER Fast or Slow tonight. </em></font></p><br>")
 
 date = datetime.now().strftime('%Y-%m-%d') #date to put in the subject
@@ -68,7 +77,7 @@ else:
     words = words
 
 #add html PEPPER Fast table to end of email
-with open("../xOUTPUTS/transient_list-F.html","r") as file:
+with open(flistHTML,"r") as file:
 	table = file.read()
 fulltxt = words + "<br><hr> <b> PEPPER Fast List </b> <br><br>" + table
 
@@ -80,12 +89,11 @@ html_part = MIMEText(fulltxt,'html')
 message.attach(html_part)
 
 #attach visiblity plots
-imagename = "../xOUTPUTS/top_visplots.jpg"
+imagename = glob.glob("../xOUTPUTS/top_visplots*")[0]
 with open(imagename, 'rb') as f:
     imagepart = MIMEImage(f.read())
 message.attach(imagepart)
 
-plists = ["../xOUTPUTS/transient_list-S.csv","../xOUTPUTS/transient_list-F.csv"]
 for plist in plists:
     with open(plist, "rb") as attachment:
     # Add the attachment to the message

@@ -13,14 +13,16 @@ import datetime as dt
 import json
 import csv
 import sys
+import glob
 sys.path.append('..')
 from PAFUP_funcs import loadDB, LTcoords, csv2list
 
+now = dt.datetime.utcnow()
 
 ### Set up targets ###
 
 # load in the PEPPER Fast priority list CSV file
-info, headers, flist = loadDB("../xOUTPUTS/transient_list-F.csv")
+info, headers, flist = loadDB(glob.glob("../xOUTPUTS/TransientList_F*.csv")[0])
 
 # load in the black list
 blist = csv2list("black_list.csv")
@@ -34,7 +36,7 @@ flist = np.delete(flist,bad_idx,0) #deletes bad rows
 
 if flist.shape[0] == 0: #check if there are targets in the list
     print("No sutible targets to request observations of.")
-    with open("../xOUTPUTS/requests.json","w") as fp: # make json blank
+    with open(f"../xOUTPUTS/requests_{now.strftime('%Y%m%d')}.json","w") as fp: # make json blank
         fp.write("")
 
 else: #if there are targets then can submit observations to the LT
@@ -73,7 +75,6 @@ else: #if there are targets then can submit observations to the LT
     # we want to request the observations as soon as we get the list so constraints in time will be from when released to start of morning twilight on the next day (over 24hrs away if release at 01:10 local time)
 
     # start date and time
-    now = dt.datetime.utcnow()
     sdate = now.strftime("%Y-%m-%d")
     stime = now.strftime("%H:%M:%S")
 
@@ -120,7 +121,7 @@ else: #if there are targets then can submit observations to the LT
 
     ### Save requests we wanr to make to LT as a JSON file ###
     requests = {"observations": obs, "constraints": constraints}
-    with open(f"../xOUTPUTS/requests.json","w") as fp: # write
+    with open(f"../xOUTPUTS/requests_{now.strftime('%Y%m%d')}.json","w") as fp: # write
         json.dump(requests, fp, indent=4)
 
 
@@ -140,14 +141,14 @@ else: #if there are targets then can submit observations to the LT
 
         #append dict to JSON of previous observations
         try: #try to open obs json if it exisits
-            with open("../xOUTPUTS/observations.json","r") as fp: #read and write
+            with open(f"../xOUTPUTS/observations_{now.strftime('%Y%m%d')}.json","r") as fp: #read and write
                 allobs = json.load(json_file)
         except: #if it doesn't exisit create a new one
             allobs = {}
 
         #add observations the dict (with date as key) and save as a JSON
         allobs[sdate] = obs_dict
-        with open("../xOUTPUTS/observations.json","w") as fp: # write
+        with open(f"../xOUTPUTS/observations_{now.strftime('%Y%m%d')}.json","w") as fp: # write
             json.dump(allobs, fp, indent=4)
 
     except:
