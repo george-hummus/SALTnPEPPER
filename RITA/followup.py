@@ -153,3 +153,5 @@ else: #if there are targets then can submit observations to the LT
 
     except:
         print("could not access the LT - please check credentials")
+        with open("fail.txt","w") as f:
+            f.write("")

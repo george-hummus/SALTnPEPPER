@@ -23,12 +23,18 @@ cd ${homedir}
 
 ### MR. KITE ###
 cd ${homedir}/MR_KITE
-python attachments.py #make the email attachments
 python email_alert.py #send the email alert
 cd ${homedir}
 
 ### RITA ###
 cd ${homedir}/RITA
 python followup.py #request observations from LT
-python dummy-trigger.py
-python obs_check.py 
+python dummy-trigger.py #dummy trigger while can't connect to LT
+python obs_check.py #check is targets requested were observed
+cd ${homedir}
+
+### MR. KITE 2 ###
+cd ${homedir}/MR_KITE
+python obs_alert.py #send the observations alert email
+
+rm ${homedir}/RITA/fail.txt #remove file indicating that LT connection failed (if exisits)
