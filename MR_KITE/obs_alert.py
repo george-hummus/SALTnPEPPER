@@ -23,7 +23,7 @@ from PAFUP_funcs import loadDB, csv2list
 #list of emails addresses to send the email to as CSV file
 correspondents = csv2list("correspondents.csv")
 
-#if connection did not fail
+#if connection did not fail on both or either of the nights then... 
 if len(glob.glob("../RITA/fail.txt")) == 0:
     #get date and entries from the csv observations file
     obspath = glob.glob("../xOUTPUTS/observations_*.csv")[0]
@@ -41,8 +41,30 @@ if len(glob.glob("../RITA/fail.txt")) == 0:
         table = f"<p><font color=#FF0000><em> No transients were requested for observation with MOPTOP on the night starting {date} as none met the requirements of PEPPER Fast. </em></font> </p>"
 
 else:
-    date = dt.datetime.utcnow().strftime('%Y-%m-%d')
-    table = f"<p><font color=#FF0000><em> No transients were requested for observation with MOPTOP on the night starting {date} as the connection to the LT failed. Therefore, attachments were not created. </em></font> </p>"
+    #if connection failed on both nights then show the requests that were made for the past night (i.e., yesterday's and this morning's requests)
+    today = dt.datetime.utcnow()
+    yesterday = (dt.datetime.utcnow() - dt.timedelta(days=1))
+
+    #todays and yesterdays requests
+    requests = glob.glob["../xOUTPUTS/requests*"]
+
+    reqs = {}
+    for req in requests:
+        try: #try to open requests json as dict
+            with open(req, "r") as r:
+                jfile = r.read()
+            #if can open add observations from requests file to dict with filename as key
+            reqs["os.path.basename(file)"]=jfile["observations"]
+        except:
+            #if can't open then no requests were made
+            reqs["os.path.basename(file)"]="No requests made on this date."
+    #convert the dict to a string so can add to email (with html line breaks)
+    reqstr = json.dumps(reqs,indent=4).replace("\n","<br>")
+
+
+    table = f"<p><font color=#FF0000><em> No transients were requested for observation with MOPTOP on the night starting {yesterday.strftime('%Y-%m%-d')} as the connection to the LT failed. Therefore, attachments were not created. </em></font> <br><br> Here is what should have been requested:<br> {reqstr} </p>"
+
+
 
 #body of email
 #reads in text to put in body of the email

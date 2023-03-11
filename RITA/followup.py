@@ -124,6 +124,13 @@ else: #if there are targets then can submit observations to the LT
     with open(f"../xOUTPUTS/requests_{now.strftime('%Y%m%d')}.json","w") as fp: # write
         json.dump(requests, fp, indent=4)
 
+    #JSON of previous observations to append dict of new ones to
+    try: #try to open obs json if it exisits
+        with open(f"../xOUTPUTS/observations.json","r") as fp: 
+            allobs = json.load(json_file)
+    except: #if it doesn't exisit create a new one
+        allobs = {}
+
 
     ### Set up connection to the LT ###
     try:
@@ -139,19 +146,12 @@ else: #if there are targets then can submit observations to the LT
         obs_dict["targets"] = targets
         obs_dict["errors"] = error
 
-        #append dict to JSON of previous observations
-        try: #try to open obs json if it exisits
-            with open(f"../xOUTPUTS/observations_{now.strftime('%Y%m%d')}.json","r") as fp: #read and write
-                allobs = json.load(json_file)
-        except: #if it doesn't exisit create a new one
-            allobs = {}
-
         #add observations the dict (with date as key) and save as a JSON
         allobs[sdate] = obs_dict
-        with open(f"../xOUTPUTS/observations_{now.strftime('%Y%m%d')}.json","w") as fp: # write
-            json.dump(allobs, fp, indent=4)
 
     except:
+        allobs[sdate] = "Connection to LT failed."
         print("could not access the LT - please check credentials")
-        with open("fail.txt","w") as f:
-            f.write("")
+
+    with open(f"../xOUTPUTS/observations.json","w") as fp: # write
+        json.dump(allobs, fp, indent=4)

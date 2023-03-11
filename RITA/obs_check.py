@@ -14,17 +14,42 @@ import time
 import csv
 import glob
 
+#DATES
+today = dt.datetime.utcnow()
+yesterday = today - dt.timedelta(days=1)
 
-if len(glob.glob("fail.txt")) != 0:
-    #if fail.txt is present then connection to LT failed so no need to check
-    print("")
+#load in observation file
+with open(f"../xOUTPUTS/observations.json","r") as fp:
+    allobs = json.load(json_file)
+
+try: #try to extract the obs from today
+    td_entry = allobs[today.strftime('%Y-%m-%d')]
+    if td_entry == "Connection to LT failed.":
+        connection1 = False #connection failed
+    else:
+        connection1 = True #connection sucessful
+except:
+    connection2 = True
+    #no requests
+
+try: #try to extract the obs from yesterday
+    yd_entries = allobs[yesterday.strftime('%Y-%m-%d')]
+    if yd_entry == "Connection to LT failed.":
+        connection2 = False #connection failed
+    else:
+        connection2 = True #connection sucessful
+except:
+    connection2 = True
+    #no requests
+
+if (connection1 or connction2) == False:
+    #if both previous dates failed to connect then create fail.txt file
+    with open("fail.txt","w") as fail:
+        fail.write("")
 else:
-    today = dt.datetime.utcnow()
-    yesterday = today - dt.timedelta(days=1)
 
     ### Load in the request JSON file from today and yesterday ###
-    requests = [f"../xOUTPUTS/requests_{today.strftime('%Y%m%d')}.json",
-    f"../zARCHIVE/{yesterday.strftime('%Y%m%d')}/requests_{yesterday.strftime('%Y%m%d')}.json"]
+    requests = glob.glob["../xOUTPUTS/requests*"] #load in any requests made for subsequent night
     rtargets = [] #empty list to fill with the requested targets
     for file in requests:
         try: #try to open the json
