@@ -23,7 +23,7 @@ from PAFUP_funcs import loadDB, csv2list
 #list of emails addresses to send the email to as CSV file
 correspondents = csv2list("correspondents.csv")
 
-#if connection did not fail on both or either of the nights then... 
+#if connection did not fail on both or either of the nights then...
 if len(glob.glob("../RITA/fail.txt")) == 0:
     #get date and entries from the csv observations file
     obspath = glob.glob("../xOUTPUTS/observations_*.csv")[0]
@@ -42,27 +42,27 @@ if len(glob.glob("../RITA/fail.txt")) == 0:
 
 else:
     #if connection failed on both nights then show the requests that were made for the past night (i.e., yesterday's and this morning's requests)
-    today = dt.datetime.utcnow()
     yesterday = (dt.datetime.utcnow() - dt.timedelta(days=1))
+    date = yesterday.strftime('%Y-%m%-d')
 
     #todays and yesterdays requests
-    requests = glob.glob["../xOUTPUTS/requests*"]
+    requests = glob.glob("../xOUTPUTS/requests*")
 
     reqs = {}
     for req in requests:
         try: #try to open requests json as dict
             with open(req, "r") as r:
-                jfile = r.read()
+                jfile = json.load(r)
             #if can open add observations from requests file to dict with filename as key
-            reqs["os.path.basename(file)"]=jfile["observations"]
+            reqs[f"{os.path.basename(req)}"]=jfile["observations"]
         except:
             #if can't open then no requests were made
-            reqs["os.path.basename(file)"]="No requests made on this date."
+            reqs[f"{os.path.basename(req)}"]="No requests made on this date."
     #convert the dict to a string so can add to email (with html line breaks)
-    reqstr = json.dumps(reqs,indent=4).replace("\n","<br>")
+    reqstr = "<pre>"+json.dumps(reqs,indent=4).replace("\n","<br>")+"</pre>"
 
 
-    table = f"<p><font color=#FF0000><em> No transients were requested for observation with MOPTOP on the night starting {yesterday.strftime('%Y-%m%-d')} as the connection to the LT failed. Therefore, attachments were not created. </em></font> <br><br> Here is what should have been requested:<br> {reqstr} </p>"
+    table = f"<p><font color=#FF0000><em> No transients were requested for observation with MOPTOP on the night starting {date} as the connection to the LT failed. Therefore, attachments were not created. </em></font> <br><br> Here is what should have been requested:<br> {reqstr} </p>"
 
 
 

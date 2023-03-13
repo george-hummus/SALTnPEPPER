@@ -1,6 +1,7 @@
 #!/bin/bash
 echo "" #gap between log entries
 date -u #prints the date out for the log
+rm ${homedir}/RITA/fail.txt #remove file indicating that LT connection failed (if exisits)
 
 #move yesterday's outputs to the archive
 yesterday=$(date -u --date="yesterday" +'%Y%m%d') #yesterday's date in utc
@@ -30,12 +31,9 @@ cd ${homedir}
 ### RITA ###
 cd ${homedir}/RITA
 python followup.py #request observations from LT
-python dummy-trigger.py #dummy trigger while can't connect to LT
 python obs_check.py #check is targets requested were observed
 cd ${homedir}
 
 ### MR. KITE 2 ###
 cd ${homedir}/MR_KITE
 python obs_alert.py #send the observations alert email
-
-rm ${homedir}/RITA/fail.txt #remove file indicating that LT connection failed (if exisits)

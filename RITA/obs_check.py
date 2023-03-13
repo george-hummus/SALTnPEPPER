@@ -20,36 +20,36 @@ yesterday = today - dt.timedelta(days=1)
 
 #load in observation file
 with open(f"../xOUTPUTS/observations.json","r") as fp:
-    allobs = json.load(json_file)
+    allobs = json.load(fp)
 
 try: #try to extract the obs from today
     td_entry = allobs[today.strftime('%Y-%m-%d')]
     if td_entry == "Connection to LT failed.":
         connection1 = False #connection failed
     else:
-        connection1 = True #connection sucessful
+        connection1 = True #connection sucessful or no requests were made
 except:
-    connection2 = True
-    #no requests
+    connection1 = False
+    #date not present so treat as non-connection to LT
 
 try: #try to extract the obs from yesterday
     yd_entries = allobs[yesterday.strftime('%Y-%m-%d')]
     if yd_entry == "Connection to LT failed.":
         connection2 = False #connection failed
     else:
-        connection2 = True #connection sucessful
+        connection2 = True #connection sucessful or no requests were made
 except:
-    connection2 = True
-    #no requests
+    connection2 = False
+    #date not present so treat as non-connection to LT
 
-if (connection1 or connction2) == False:
+if (connection1 or connection2) == False:
     #if both previous dates failed to connect then create fail.txt file
     with open("fail.txt","w") as fail:
         fail.write("")
 else:
 
     ### Load in the request JSON file from today and yesterday ###
-    requests = glob.glob["../xOUTPUTS/requests*"] #load in any requests made for subsequent night
+    requests = glob.glob("../xOUTPUTS/requests*") #load in any requests made for subsequent night
     rtargets = [] #empty list to fill with the requested targets
     for file in requests:
         try: #try to open the json

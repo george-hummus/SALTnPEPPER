@@ -24,6 +24,13 @@ now = dt.datetime.utcnow()
 # load in the PEPPER Fast priority list CSV file
 info, headers, flist = loadDB(glob.glob("../xOUTPUTS/TransientList_F*.csv")[0])
 
+#JSON of previous observations to append dict of new ones to
+try: #try to open obs json if it exisits
+    with open(f"../xOUTPUTS/observations.json","r") as fp:
+        allobs = json.load(fp)
+except: #if it doesn't exisit create a new one
+    allobs = {}
+
 # load in the black list
 blist = csv2list("black_list.csv")
 
@@ -38,6 +45,7 @@ if flist.shape[0] == 0: #check if there are targets in the list
     print("No sutible targets to request observations of.")
     with open(f"../xOUTPUTS/requests_{now.strftime('%Y%m%d')}.json","w") as fp: # make json blank
         fp.write("")
+    allobs[sdate] = "No requests made."
 
 else: #if there are targets then can submit observations to the LT
 
@@ -123,13 +131,6 @@ else: #if there are targets then can submit observations to the LT
     requests = {"observations": obs, "constraints": constraints}
     with open(f"../xOUTPUTS/requests_{now.strftime('%Y%m%d')}.json","w") as fp: # write
         json.dump(requests, fp, indent=4)
-
-    #JSON of previous observations to append dict of new ones to
-    try: #try to open obs json if it exisits
-        with open(f"../xOUTPUTS/observations.json","r") as fp: 
-            allobs = json.load(json_file)
-    except: #if it doesn't exisit create a new one
-        allobs = {}
 
 
     ### Set up connection to the LT ###
