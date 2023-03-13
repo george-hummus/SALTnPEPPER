@@ -24,32 +24,33 @@ with open(f"../xOUTPUTS/observations.json","r") as fp:
 
 try: #try to extract the obs from today
     td_entry = allobs[today.strftime('%Y-%m-%d')]
-    if td_entry == "Connection to LT failed.":
-        connection1 = False #connection failed
-    else:
-        connection1 = True #connection sucessful or no requests were made
 except:
-    connection1 = False
+    td_entry = "Connection to LT failed."
     #date not present so treat as non-connection to LT
 
 try: #try to extract the obs from yesterday
     yd_entries = allobs[yesterday.strftime('%Y-%m-%d')]
-    if yd_entry == "Connection to LT failed.":
-        connection2 = False #connection failed
-    else:
-        connection2 = True #connection sucessful or no requests were made
 except:
-    connection2 = False
+    yd_entries = "Connection to LT failed."
     #date not present so treat as non-connection to LT
 
-if (connection1 or connection2) == False:
-    #if both previous dates failed to connect then create fail.txt file
-    with open("fail.txt","w") as fail:
-        fail.write("")
-else:
+### Add requests files to list if connection was made ###
+requests = []
+if td_entry != "Connection to LT failed.":
+    #if today's didn't fail add requests file to list
+    requests.append(f"../xOUTPUTS/requests_{today.strftime('%Y%m%d')}")
+if yd_entries != "Connection to LT failed.":
+    #if yesterday's didn't fail add requests file to list
+    requests.append(f"../xOUTPUTS/requests_{yesterday.strftime('%Y%m%d')}")
 
-    ### Load in the request JSON file from today and yesterday ###
-    requests = glob.glob("../xOUTPUTS/requests*") #load in any requests made for subsequent night
+
+if len(requests) == 0: #i.e., no connection was made on either date
+    with open("fail.txt") as fail:
+        fail.write("")
+
+else: #i.e., connection was made at least on one date
+
+    ### Load in the requests from today and yesterday ###
     rtargets = [] #empty list to fill with the requested targets
     for file in requests:
         try: #try to open the json
@@ -60,7 +61,7 @@ else:
         except: #if can't then it is empty so no requests made
             continue
 
-    if len(rtargets) < 1:
+    if len(rtargets) == 0:
         #if no requests were made there is no need to check
         observations = "" #write nothing to the csv
         slog = []

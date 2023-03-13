@@ -43,7 +43,7 @@ if len(glob.glob("../RITA/fail.txt")) == 0:
 else:
     #if connection failed on both nights then show the requests that were made for the past night (i.e., yesterday's and this morning's requests)
     yesterday = (dt.datetime.utcnow() - dt.timedelta(days=1))
-    date = yesterday.strftime('%Y-%m%-d')
+    date = yesterday.strftime('%Y-%m-%d')
 
     #todays and yesterdays requests
     requests = glob.glob("../xOUTPUTS/requests*")
