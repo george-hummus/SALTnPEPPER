@@ -30,6 +30,12 @@ if len(glob.glob("../RITA/fail.txt")) == 0:
     info, dummy, DB = loadDB(obspath)
     date = info[-10:] #date for night of observations
     try:
+        #format file names columns
+        for i in range(DB.shape[0]):
+            DB.T[-1][i] = DB.T[-1][i].replace(",","<br>") #new line for each file name
+            DB.T[-1][i] = DB.T[-1][i].replace("[","") #remove the brackets
+            DB.T[-1][i] = DB.T[-1][i].replace("]","")
+
         htmlpath = csv2html(obspath) #make the html table to attach to email if there were request
 
         #add html observations table to end of email
