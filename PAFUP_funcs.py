@@ -689,30 +689,25 @@ def csv2list(fname):
 
 ################################################################################
 
-def csv2html(csvpath):
+def array2html(headers,database,path):
     """
-    Function converts a csv file to a html table. The table must have a column called 'name' which is the TNS name (minus the prefix) and the columnn headers must be in the second row (index 1) - the first row must be a dummy row.
+    Function converts a numpy array with headers to a html table. The table must have a column called 'name' which is the TNS name (minus the prefix) and the columnn headers must be in the second row (index 1) - the first row must be a dummy row.
     Arguments:
-        - csvpath: path to the csv file you want to convert
+        - headers: list of strings to be headers for html table
+        - database: the numpy array of data the html table contains
+        - path: path you want to save the html table to
     Output:
-        - apath: the path to the HTML table of the csv file that was created
+        - saves the HTML table to specified path
     """
 
-    #load in csv file as numpy array
-    dummy, headers, fastDB = loadDB(csvpath)
-    apath = f"{csvpath[0:-4]}.html" #path to save html file to
-
-    try: #may not be possible if databse is empty
-        df = pd.DataFrame(fastDB, columns = headers)
-        df['name'] = '<a href=' + "https://www.wis-tns.org/object/" + df['name'] + '><div>' + df['name'] +'</div></a>' #click tns name to take to website
-        html = df.to_html(escape=False, justify = "left",index = False, render_links=True)
-        with open(apath, "w") as file:
-            file.write(html)
-    except:
-        print("HTML table failed")
-
-
-    return apath
+    #try: #may not be possible if databse is empty
+    df = pd.DataFrame(database, columns = headers)
+    df['name'] = '<a href=' + "https://www.wis-tns.org/object/" + df['name'] + '><div>' + df['name'] +'</div></a>' #click tns name to take to website
+    html = df.to_html(escape=False, justify = "left",index = False, render_links=True)
+    with open(path, "w") as file:
+        file.write(html)
+    #except:
+        #print("HTML table failed")
 
 ################################################################################
 

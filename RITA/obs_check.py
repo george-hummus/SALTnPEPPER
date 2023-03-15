@@ -38,10 +38,10 @@ except:
 requests = []
 if td_entry != "Connection to LT failed.":
     #if today's didn't fail add requests file to list
-    requests.append(f"../xOUTPUTS/requests_{today.strftime('%Y%m%d')}")
+    requests.append(f"../xOUTPUTS/requests_{today.strftime('%Y%m%d')}.json")
 if yd_entries != "Connection to LT failed.":
     #if yesterday's didn't fail add requests file to list
-    requests.append(f"../xOUTPUTS/requests_{yesterday.strftime('%Y%m%d')}")
+    requests.append(f"../xOUTPUTS/requests_{yesterday.strftime('%Y%m%d')}.json")
 
 
 if len(requests) == 0: #i.e., no connection was made on either date
@@ -63,8 +63,10 @@ else: #i.e., connection was made at least on one date
 
     if len(rtargets) == 0:
         #if no requests were made there is no need to check
-        observations = "" #write nothing to the csv
-        slog = []
+        observations = [["","","","",""]] #write nothing to the csv
+        slog = ["No requests made"]
+        with open(f"logheaders.txt") as L: #just load in the log headers
+            Log = L.readlines()
 
     else:
         released = False

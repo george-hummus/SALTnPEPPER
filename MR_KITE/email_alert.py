@@ -18,7 +18,7 @@ import json
 import sys
 import glob
 sys.path.append('..')
-from PAFUP_funcs import loadDB, csv2list, csv2html, visplots
+from PAFUP_funcs import loadDB, csv2list, array2html, visplots
 
 #list of emails addresses to send the email to as CSV file
 correspondents = csv2list("correspondents.csv")
@@ -34,14 +34,15 @@ tns_date = info[-19:-9] #date of last update of TNS database
 
 # check the size of the databases
 fastlist = glob.glob("../xOUTPUTS/TransientList_F*.csv")[0]
-dummy, dummy2, fastDB = loadDB(fastlist)
+dummy, headers, fastDB = loadDB(fastlist)
 
 #add pscore paths to list
 plists.append(slowlist)
 plists.append(fastlist)
 
 ### Make the attachments and return paths ###
-htmlpath = csv2html(fastlist) #html table of fast list
+htmlpath = f"{fastlist[0:-4]}.html"
+array2html(headers,fastDB,htmlpath) #html table of fast list
 vispath = visplots(plists) #visiblity plots of highest priority targets in both lists
 
 

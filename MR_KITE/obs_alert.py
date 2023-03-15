@@ -18,7 +18,7 @@ import json
 import sys
 import glob
 sys.path.append('..')
-from PAFUP_funcs import loadDB, csv2list
+from PAFUP_funcs import loadDB, csv2list, array2html
 
 #list of emails addresses to send the email to as CSV file
 correspondents = csv2list("correspondents.csv")
@@ -27,22 +27,25 @@ correspondents = csv2list("correspondents.csv")
 if len(glob.glob("../RITA/fail.txt")) == 0:
     #get date and entries from the csv observations file
     obspath = glob.glob("../xOUTPUTS/observations_*.csv")[0]
-    info, dummy, DB = loadDB(obspath)
+    info, headers, DB = loadDB(obspath)
     date = info[-10:] #date for night of observations
-    try:
+
+    if len(DB[0][0]) > 0:
         #format file names columns
         for i in range(DB.shape[0]):
             DB.T[-1][i] = DB.T[-1][i].replace(",","<br>") #new line for each file name
-            DB.T[-1][i] = DB.T[-1][i].replace("[","") #remove the brackets
-            DB.T[-1][i] = DB.T[-1][i].replace("]","")
+            DB.T[-1][i] = DB.T[-1][i].replace("[","<pre>") #remove the brackets
+            DB.T[-1][i] = DB.T[-1][i].replace("]","</pre>")
 
-        htmlpath = csv2html(obspath) #make the html table to attach to email if there were request
+        htmlpath = f"{obspath[0:-4]}.html"
+        array2html(headers,DB,htmlpath)
+        #make the html table to attach to email if there were request
 
         #add html observations table to end of email
         with open(htmlpath,"r") as file:
             table = file.read()
 
-    except:
+    else:
         #message indicating no requests were made
         table = f"<p><font color=#FF0000><em> No transients were requested for observation with MOPTOP on the night starting {date} as none met the requirements of PEPPER Fast. </em></font> </p>"
 
