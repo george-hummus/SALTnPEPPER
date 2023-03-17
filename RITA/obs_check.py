@@ -45,7 +45,7 @@ if yd_entries != "Connection to LT failed.":
 
 
 if len(requests) == 0: #i.e., no connection was made on either date
-    with open("fail.txt") as fail:
+    with open("fail.txt","w") as fail:
         fail.write("")
 
 else: #i.e., connection was made at least on one date
