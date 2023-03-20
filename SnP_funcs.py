@@ -12,6 +12,8 @@ import numpy as np
 import datetime as dt
 from skyfield import almanac
 from skyfield.api import N, E, wgs84, load, utc, Star
+from skyfield.positionlib import Apparent
+from skyfield.framelib import galactic_frame
 import subprocess
 from astropy import units as u
 from astropy.coordinates import SkyCoord
@@ -113,8 +115,7 @@ def UPdate(ufile,date,database):
     with open(filename, 'w') as file:
         csvwriter = csv.writer(file,delimiter=",") # create a csvwriter object
         csvwriter.writerow([date.strftime('%Y-%m-%d %H:%M:%S')]) #add date to first row
-        csvwriter.writerows(database) # write the headers and rest of the data
-
+        csvwriter.writerows(database)
 
 ################# FUNCTIONS FOR CALCULATING PRIORITY SCORES ##########################
 
@@ -448,15 +449,20 @@ def thresholds(DB,mill):
     ml_th = 16 #lower threshold
     mu_th = 18.5 #upper threshold
 
+    #set the absolute value of the galactic latitude below which targets will be disregarded
+    glat_th = 10
+
     #remove all entries which dont meet the thresholds
     bad_idx = []
     for idx, entry in enumerate(DB):
-        if entry[-3] <= to_th: #check the observable time of the target
+        if entry[8] <= to_th: #check the observable time of the target
             bad_idx.append(idx)
-        elif entry[-2] < m_th: #check the lunar separation
+        elif entry[9] < m_th: #check the lunar separation
             bad_idx.append(idx)
-        elif (float(entry[-4]) <= ml_th) or (float(entry[-4]) >= mu_th): #check magnitudes
+        elif (float(entry[7]) <= ml_th) or (float(entry[7]) >= mu_th): #check magnitudes
             bad_idx.append(idx)
+        elif abs(float(entry[10])) <= glat_th:
+            bad_idx.append(idx) #check galactic latitude
     t_array = np.delete(DB,bad_idx,0) #deletes rows with no observable time
 
     return t_array
@@ -490,9 +496,9 @@ def pscore(database,weights,moon_per):
     disc = np.array([dt.datetime.strptime(date, "%Y-%m-%d %H:%M:%S.%f") for date in t_array.T[5]])
     #discovery dates as datetime objects
 
-    mag = np.array(t_array.T[-4],dtype="float") #magnitudes as floats
-    tobs = np.array(t_array.T[-3],dtype="float") #observable time as decimal hour
-    lsep = np.array(t_array.T[-2],dtype="float") #lunar separation as decimal angle
+    mag = np.array(t_array.T[7],dtype="float") #magnitudes as floats
+    tobs = np.array(t_array.T[8],dtype="float") #observable time as decimal hour
+    lsep = np.array(t_array.T[9],dtype="float") #lunar separation as decimal angle
 
     varbs = [tobs,lsep,mag,disc] #list containing the variables needed to calculate the pscores
 
@@ -608,8 +614,24 @@ def priority_list(database,date,Slow=True):
         #calculate observable time and lunar separation of targets
         t_obs, l_sep, l_per = Visibility(ra, dec, lat, long, elv)
 
+
+        ## calculate the galactic latitudes ##
+        Glat = []
+
+        #loop thru all targets from list
+        for i in range(DB.shape[0]):
+            #create a skyfield position object from ra and dec of target
+            position = Apparent.from_radec(ra_hours=float(ra[i])/15, dec_degrees=float(dec[i]))
+
+            #find galactic lat and long from position object
+            Glt, Gln, dummy = position.frame_latlon(galactic_frame)
+
+            Glat.append(Glt.degrees)
+        Glat = np.array(Glat) #convert from list to array
+
+
         #new databse with all relevant information
-        newDB = np.array([IDs,prefix,name,ra,dec,t_disc,t_mod,mags,t_obs,l_sep,it_names]).T
+        newDB = np.array([IDs,prefix,name,ra,dec,t_disc,t_mod,mags,t_obs,l_sep,Glat,it_names]).T
 
         #different weightings for PEPPER Fast and Slow
         if Slow == False:
@@ -854,7 +876,6 @@ def visplots(lists):
     plt.close()
 
     return apath
-
 
 ######################### FUNCTIONS FOR FOLLOW-UP ##############################
 
