@@ -15,7 +15,7 @@ import csv
 import sys
 import glob
 sys.path.append('..')
-from PAFUP_funcs import loadDB, LTcoords, csv2list
+from SnP_funcs import loadDB, LTcoords, csv2list
 
 now = dt.datetime.utcnow()
 

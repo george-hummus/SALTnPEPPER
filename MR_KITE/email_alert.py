@@ -18,7 +18,7 @@ import json
 import sys
 import glob
 sys.path.append('..')
-from PAFUP_funcs import loadDB, csv2list, array2html, visplots
+from SnP_funcs import loadDB, csv2list, array2html, visplots
 
 #list of emails addresses to send the email to as CSV file
 correspondents = csv2list("correspondents.csv")

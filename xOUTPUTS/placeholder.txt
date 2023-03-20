@@ -1,1 +1,1 @@
-This is the directory where all the outputs are saved. Feel free to delete this file when PAF-UP is in operation.
+This is the directory where all the outputs are saved. Feel free to delete this file when SALT&PEPPER is in operation.

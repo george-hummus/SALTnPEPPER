@@ -11,7 +11,7 @@ import datetime as dt
 import sys
 import glob
 sys.path.append('..')
-from PAFUP_funcs import loadDB, dload, UPdate
+from SnP_funcs import loadDB, dload, UPdate
 
 #TNS bot info
 with open('bot_info.json') as json_file:

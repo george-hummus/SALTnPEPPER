@@ -15,7 +15,7 @@ import numpy as np
 import datetime as dt
 import sys
 sys.path.append('..')
-from PAFUP_funcs import loadDB, flatten, priority_list
+from SnP_funcs import loadDB, flatten, priority_list
 
 
 # loads in the tns database as numpy array along with the date it was released as a string and a list of the headers
