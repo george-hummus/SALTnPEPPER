@@ -10,7 +10,8 @@ yesterday=$(date -u --date="yesterday" +'%Y%m%d') #yesterday's date in utc
 mkdir zARCHIVE/${yesterday} #makes folder for yesterday's outputs in archive
 mv xOUTPUTS/* zARCHIVE/${yesterday} #moves outputs to the folder
 mv zARCHIVE/${yesterday}/tns_public_objects.csv xOUTPUTS
-mv zARCHIVE/${yesterday}/observations.json xOUTPUTS #move these back as they are always updated
+mv zARCHIVE/${yesterday}/obs_requests.json xOUTPUTS
+mv zARCHIVE/${yesterday}/observations.csv xOUTPUTS #move these back as they are always updated
 cp zARCHIVE/${yesterday}/requests_${yesterday}.json xOUTPUTS #copy previous requests back as need them in obs_check
 
 ### BILLY ###

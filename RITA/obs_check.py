@@ -19,7 +19,7 @@ today = dt.datetime.utcnow()
 yesterday = today - dt.timedelta(days=1)
 
 #load in observation file
-with open(f"../xOUTPUTS/observations.json","r") as fp:
+with open(f"../xOUTPUTS/obs_requests.json","r") as fp:
     allobs = json.load(fp)
 
 try: #try to extract the obs from today
@@ -34,14 +34,14 @@ except:
     yd_entries = "Connection to LT failed."
     #date not present so treat as non-connection to LT
 
-### Add requests files to list if connection was made ###
+### Add requests info to list if connection was made ###
 requests = []
 if td_entry != "Connection to LT failed.":
     #if today's didn't fail add requests file to list
-    requests.append(f"../xOUTPUTS/requests_{today.strftime('%Y%m%d')}.json")
+    requests.append(td_entry)
 if yd_entries != "Connection to LT failed.":
     #if yesterday's didn't fail add requests file to list
-    requests.append(f"../xOUTPUTS/requests_{yesterday.strftime('%Y%m%d')}.json")
+    requests.append(yd_entry)
 
 
 if len(requests) == 0: #i.e., no connection was made on either date
@@ -50,25 +50,19 @@ if len(requests) == 0: #i.e., no connection was made on either date
 
 else: #i.e., connection was made at least on one date
 
-    ### Load in the requests from today and yesterday ###
-    rtargets = [] #empty list to fill with the requested targets
-    for file in requests:
-        try: #try to open the json
-            with open(file) as jfile:
-                rqst = json.load(jfile)
-            for entry in rqst['observations']:
-                rtargets.append(entry['target']['name'])
-        except: #if can't then it is empty so no requests made
+    ## load in targets names and its uid from requests of today and yesterday ###
+    rtargets = [] #empty list to fill with tuples of requested target and their UID
+    for rqst in requests:
+        if rqst == "No requests made.":
+            #if no requests made for date then continue
             continue
+        else:
+            uid = rqst["uid"]
+            for entry in rqst['targets']:
+                rtargets.append((entry['name'],uid))
 
-    if len(rtargets) == 0:
-        #if no requests were made there is no need to check
-        observations = [["","","","",""]] #write nothing to the csv
-        slog = ["No requests made"]
-        with open(f"logheaders.txt") as L: #just load in the log headers
-            Log = L.readlines()
-
-    else:
+    if len(rtargets) != 0:
+        #if there were targets requested
         released = False
         while released == False:
             ### Try to download LT log for the previous night using curl ###
@@ -99,7 +93,8 @@ else: #i.e., connection was made at least on one date
         for target in rtargets:
             trows = [] #empty list to store all the rows corresponding to this target
             for row in Log:
-                if target in row: #if target names is in the column add row to list
+                if (target[0] in row) and (target[1] in row):
+                    #if target name and UID is this row then its our obs so add to list
                     trows.append(row.split()) #split row string into a list
                     slog.append(row)
             trows = np.array(trows)
@@ -108,7 +103,7 @@ else: #i.e., connection was made at least on one date
                 #if target was not observed
                 observed = False
                 pc = 0
-                fnames = []
+                fname_root = ""
 
             else:
                 observed = True
@@ -117,26 +112,33 @@ else: #i.e., connection was made at least on one date
                 total_exp = sum(trows.T[10].astype(float))
                 pc = total_exp/r_texp
 
-                #extract the file names into a list
-                fnames = list(trows.T[13])
+                if pc >= 1:
+                    #if the target has been observed for full time requested
+                    with open("blacklist.csv","a") as blist:
+                        #append name to black list to avoid repeats
+                        blist.write(f"{target}\n")
 
-            observations.append([target[0:2],target[2:],observed,pc,fnames])
+                #extract proposal and group ids from the first log entry for the target
+                propid = trows.T[2][0]
+                groupid = trows.T[14][0] #group id should be same as the uid
 
-    #save observations array to a CSV with data at top and headers
-    TopRow = f"Requested observations and statuses for the night starting {yesterday.strftime('%Y-%m-%d')}"
-    Headers = ["name_prefix","name","observed","fraction_complete","filenames"]
-    observations = np.array(observations,dtype=object)
-    with open(f"../xOUTPUTS/observations_{yesterday.strftime('%Y%m%d')}.csv","w") as obs:
-        csvwriter = csv.writer(obs,delimiter=",")
-        csvwriter.writerow([TopRow])
-        csvwriter.writerow(Headers)
-        csvwriter.writerows(observations)
+                #extract the root file name from the first log entry for the target
+                split_fname = trows.T[13][0].split("_") #split using underscores
+                fname_root = f"{split_fname[1]}_{split_fname[2]}_{split_fname[3]}"
 
-    #save log spliced to only contain our targets
-    #get headers from the log file
-    lines = Log[0:4]
-    with open(f"../xOUTPUTS/LT{yesterday.strftime('%Y%m%d')}_spliced.log","w") as f:
-        for l in lines: #write headers to top
-            f.write(l)
-        for r in slog: #write spliced entries afterwards
-            f.write(r+"\n")
+            #add target's info to list
+            observations.append([yesterday.strftime('%Y-%m-%d'), propid, groupid, target[0:2],target[2:],observed,pc,fname_root])
+
+        #save observations array to the CSV containing info on all data at top and headers
+        with open(f"../xOUTPUTS/observations.csv","a") as obs:
+            csvwriter = csv.writer(obs,delimiter=",")
+            csvwriter.writerows(observations)
+
+        #save log spliced to only contain our targets
+        #get headers from the log file
+        lines = Log[0:4]
+        with open(f"../xOUTPUTS/LT{yesterday.strftime('%Y%m%d')}_spliced.log","w") as f:
+            for l in lines: #write headers to top
+                f.write(l)
+            for r in slog: #write spliced entries afterwards
+                f.write(r+"\n")

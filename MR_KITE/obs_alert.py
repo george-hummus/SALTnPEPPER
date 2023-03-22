@@ -23,22 +23,25 @@ from SnP_funcs import loadDB, csv2list, array2html
 #list of emails addresses to send the email to as CSV file
 correspondents = csv2list("correspondents.csv")
 
+#yesterday's date
+yesterday = (dt.datetime.utcnow() - dt.timedelta(days=1))
+date = yesterday.strftime('%Y-%m-%d')
+
 #if connection did not fail on both or either of the nights then...
 if len(glob.glob("../RITA/fail.txt")) == 0:
-    #get date and entries from the csv observations file
-    obspath = glob.glob("../xOUTPUTS/observations_*.csv")[0]
-    info, headers, DB = loadDB(obspath)
-    date = info[-10:] #date for night of observations
+    #load in CSv containing all PEPPER observations
+    obspath = "../xOUTPUTS/observations.csv"
+    dummy, headers, DB = loadDB(obspath)
 
-    if len(DB[0][0]) > 0:
-        #format file names columns
-        for i in range(DB.shape[0]):
-            DB.T[-1][i] = DB.T[-1][i].replace(",","<br>") #new line for each file name
-            DB.T[-1][i] = DB.T[-1][i].replace("[","<pre>") #remove the brackets
-            DB.T[-1][i] = DB.T[-1][i].replace("]","</pre>")
+    #check if yesterday's date is in database
+    if date in DB:
+        #extract rows from the database corresponding just to yesterday's date
+        DBmsk = Dbase.T[0] == date #make mask to removes dates other than one we want
+        DByd = DB[DBmsk] #apply mask
+        DByd = np.delete(DByd, 0, 1) #delete date column
 
-        htmlpath = f"{obspath[0:-4]}.html"
-        array2html(headers,DB,htmlpath)
+        htmlpath = f"observations_{yesterday.strftime('%Y%m%d')}.html"
+        array2html(headers[1:],DByd,htmlpath)
         #make the html table to attach to email if there were request
 
         #add html observations table to end of email
@@ -47,12 +50,10 @@ if len(glob.glob("../RITA/fail.txt")) == 0:
 
     else:
         #message indicating no requests were made
-        table = f"<p><font color=#FF0000><em> No transients were requested for observation with MOPTOP on the night starting {date} as none met the requirements of PEPPER Fast. </em></font> </p>"
+        table = f"<p><font color=#FF0000><em> No transients were requested for observation with MOPTOP on the night starting {date} as none met the requirements of PEPPER Fast. Therefore, attachments were not created. </em></font> </p>"
 
 else:
     #if connection failed on both nights then show the requests that were made for the past night (i.e., yesterday's and this morning's requests)
-    yesterday = (dt.datetime.utcnow() - dt.timedelta(days=1))
-    date = yesterday.strftime('%Y-%m-%d')
 
     #todays and yesterdays requests
     requests = glob.glob("../xOUTPUTS/requests*")
@@ -71,7 +72,7 @@ else:
     reqstr = "<pre>"+json.dumps(reqs,indent=4).replace("\n","<br>")+"</pre>"
 
 
-    table = f"<p><font color=#FF0000><em> No transients were requested for observation with MOPTOP on the night starting {date} as the connection to the LT failed. Therefore, attachments were not created. </em></font> <br><br> Here is what should have been requested:<br> {reqstr} </p>"
+    table = f"<p><font color=#FF0000><em> No transients were requested for observation with MOPTOP on the night starting {date} as the connection to the LT failed. Therefore, the attachments were not created. </em></font> <br><br> Here is what should have been requested:<br> {reqstr} </p>"
 
 
 
@@ -89,8 +90,7 @@ message['To'] = "PEPPER Survey Collaborators"
 html_part = MIMEText(fulltxt,'html')
 message.attach(html_part)
 
-#if connection did not fail then file would be created
-if len(glob.glob("../RITA/fail.txt")) == 0:
+try: #try to atatch files if they exsist
     ### attach csv file and spliced log ###
     slog = glob.glob("../xOUTPUTS/*spliced.log")[0] #path to the spliced log
     attachments = [obspath, slog]
@@ -102,7 +102,8 @@ if len(glob.glob("../RITA/fail.txt")) == 0:
         encoders.encode_base64(part)
         part.add_header("Content-Disposition",f"attachment; filename= {os.path.basename(file)}")
         message.attach(part)
-
+except Exception as e:
+    print(e)
 
 ### SEND EMAIL ###
 try:
@@ -116,5 +117,6 @@ try:
     smtpObj.sendmail(creds["email"], correspondents, message.as_string())
     print("email sent")
 
-except:
+except Exception as e:
+    print(e)
     print("email failed")

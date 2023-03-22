@@ -26,7 +26,7 @@ info, headers, flist = loadDB(glob.glob("../xOUTPUTS/TransientList_F*.csv")[0])
 
 #JSON of previous observations to append dict of new ones to
 try: #try to open obs json if it exisits
-    with open(f"../xOUTPUTS/observations.json","r") as fp:
+    with open(f"../xOUTPUTS/obs_requests.json","r") as fp:
         allobs = json.load(fp)
 except: #if it doesn't exisit create a new one
     allobs = {}
@@ -154,5 +154,5 @@ else: #if there are targets then can submit observations to the LT
         allobs[sdate] = "Connection to LT failed."
         print("could not access the LT - please check credentials")
 
-    with open(f"../xOUTPUTS/observations.json","w") as fp: # write
+    with open(f"../xOUTPUTS/obs_requests.json","w") as fp: # write
         json.dump(allobs, fp, indent=4)
