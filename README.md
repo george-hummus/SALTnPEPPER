@@ -5,8 +5,9 @@
 ### SALT&PEPPER is broken into 4 modules
 - BILLY: Updates a local copy of the TNS database using the updates released daily by the TNS.
 - LUCY: Calculates the priority score lists for both PEPPER Fast and Slow Surveys.
-- MR. KITE: Send out daily email alerts with the priority score lists.
+- MR. KITE: Send out 2 daily email alerts - one with the priority score lists, the other with the statuses of observation requests made to the Liverpool Telescope.
 - RITA: Requests observations of the transients with the Liverpool Telescope.
+- SGT. P: Automatically downloads any data of observations requested via SALT&PEPPER from the Liverpool Telescope archive. 
 
 ![Flow chart of the structure of SALT&PEPPER](SnP-structure.png)
 
