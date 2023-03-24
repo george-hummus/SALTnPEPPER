@@ -1,0 +1,1 @@
+This is the directory where all the observation data downloaded from the LT archive are saved. Feel free to delete this file when SALT&PEPPER is in operation.

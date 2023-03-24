@@ -38,3 +38,8 @@ cd ${homedir}
 ### MR. KITE 2 ###
 cd ${homedir}/MR_KITE
 python obs_alert.py #send the observations alert email
+cd ${homedir}
+
+### SGT. P ###
+cd ${homedir}/SGT_P
+python auto_dload.py #downloads new obs data from LT archive
