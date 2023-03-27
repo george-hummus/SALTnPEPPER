@@ -34,7 +34,7 @@ for idx, entry in enumerate(obs):
     if f"{entry[0]} | {entry[1]}" in pst_dwnlds:
         #has been downloaded
         bad_idx.append(idx)
-    elif entry[6] == "False":
+    elif entry[5] == "False":
         #hasn't been downloaded as wasn't observed
         bad_idx.append(idx) #remove entries which haven't been observed
     else:

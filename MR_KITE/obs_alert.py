@@ -12,6 +12,7 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from email.mime.image import MIMEImage
 import os
+import numpy as np
 import datetime as dt
 import csv
 import json
@@ -34,9 +35,9 @@ if len(glob.glob("../RITA/fail.txt")) == 0:
     dummy, headers, DB = loadDB(obspath)
 
     #check if yesterday's date is in database
-    if date in DB:
+    if date in DB.T[0]:
         #extract rows from the database corresponding just to yesterday's date
-        DBmsk = Dbase.T[0] == date #make mask to removes dates other than one we want
+        DBmsk = DB.T[0] == date #make mask to removes dates other than one we want
         DByd = DB[DBmsk] #apply mask
         DByd = np.delete(DByd, 0, 1) #delete date column
 
