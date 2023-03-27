@@ -88,8 +88,8 @@ with open(htmlpath,"r") as file:
 fulltxt = words + "<br><hr> <b> PEPPER Fast List </b> <br><br>" + table
 
 message = MIMEMultipart()
-message['Subject'] = f"Transients for {date}"
-message['From'] = "PEPPER Automated Transient Alerts <noreply>"
+message['Subject'] = f"High Priority Transients for Night Starting {date}"
+message['From'] = "SALT&PEPPER Pipeline"
 message['To'] = "PEPPER Survey Collaborators"
 html_part = MIMEText(fulltxt,'html')
 message.attach(html_part)

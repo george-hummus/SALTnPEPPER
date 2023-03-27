@@ -85,8 +85,8 @@ fulltxt = words + "<br><hr> <b> Observations Requests and Statuses </b> <br><br>
 
 ### SET UP EMAIL ###
 message = MIMEMultipart()
-message['Subject'] = f"Observation Statuses of Transients for Night Starting {date}"
-message['From'] = "PEPPER Automated Follow-Up Observations <noreply>"
+message['Subject'] = f"Observation Statuses of Requests for Night Starting {date}"
+message['From'] = "SALT&PEPPER Pipeline"
 message['To'] = "PEPPER Survey Collaborators"
 html_part = MIMEText(fulltxt,'html')
 message.attach(html_part)
