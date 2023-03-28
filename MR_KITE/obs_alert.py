@@ -41,7 +41,7 @@ if len(glob.glob("../RITA/fail.txt")) == 0:
         DByd = DB[DBmsk] #apply mask
         DByd = np.delete(DByd, 0, 1) #delete date column
 
-        htmlpath = f"observations_{yesterday.strftime('%Y%m%d')}.html"
+        htmlpath = f"../xOUTPUTS/observations_{yesterday.strftime('%Y%m%d')}.html"
         array2html(headers[1:],DByd,htmlpath)
         #make the html table to attach to email if there were request
 

@@ -12,8 +12,6 @@ import json
 import subprocess
 import time
 import csv
-import glob
-import os
 import sys
 sys.path.append('..')
 from SnP_funcs import loadDB
@@ -28,13 +26,6 @@ dummy, dummy2, DB = loadDB(obspath)
 if yesterday.strftime('%Y-%m-%d') in DB.T[0]:
     print("Last night's observation requests have already been checked.")
 
-    #if want rest of pipeline to work need to make sure spliced log is in the output file
-    if len(glob.glob("../xOUTPUTS/*_spliced.log")) == 0:
-        yd = yesterday.strftime('%Y%m%d')
-        logA = f"../zARCHIVE/{yd}/LT{yd}_spliced.log"
-        logB = f"../xOUTPUTS/LT{yd}_spliced.log"
-        os.replace(os.path.abspath(logA),os.path.abspath(logB))
-
 else:
     #load in observation file
     with open(f"../xOUTPUTS/obs_requests.json","r") as fp:
@@ -47,9 +38,9 @@ else:
         #date not present so treat as non-connection to LT
 
     try: #try to extract the obs from yesterday
-        yd_entries = allobs[yesterday.strftime('%Y-%m-%d')]
+        yd_entry = allobs[yesterday.strftime('%Y-%m-%d')]
     except:
-        yd_entries = "Connection to LT failed."
+        yd_entry = "Connection to LT failed."
         #date not present so treat as non-connection to LT
 
     ### Add requests info to list if connection was made ###
@@ -57,7 +48,7 @@ else:
     if td_entry != "Connection to LT failed.":
         #if today's didn't fail add requests file to list
         requests.append(td_entry)
-    if yd_entries != "Connection to LT failed.":
+    if yd_entry != "Connection to LT failed.":
         #if yesterday's didn't fail add requests file to list
         requests.append(yd_entry)
 

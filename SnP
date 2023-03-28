@@ -3,16 +3,26 @@ echo "" #gap between log entries
 date -u #prints the date out for the log
 homedir=$(pwd) #the home directory to return to once module is finished
 
-rm ${homedir}/RITA/fail.txt #remove file indicating that LT connection failed (if exisits)
+#yesterday's date in utc
+yesterday=$(date -u --date="yesterday" +'%Y%m%d')
+ydDIR="zARCHIVE/${yesterday}"
 
-#move yesterday's outputs to the archive
-yesterday=$(date -u --date="yesterday" +'%Y%m%d') #yesterday's date in utc
-mkdir zARCHIVE/${yesterday} #makes folder for yesterday's outputs in archive
-mv xOUTPUTS/* zARCHIVE/${yesterday} #moves outputs to the folder
-mv zARCHIVE/${yesterday}/tns_public_objects.csv xOUTPUTS
-mv zARCHIVE/${yesterday}/obs_requests.json xOUTPUTS
-mv zARCHIVE/${yesterday}/observations.csv xOUTPUTS #move these back as they are always updated
-cp zARCHIVE/${yesterday}/requests_${yesterday}.json xOUTPUTS #copy previous requests back as need them in obs_check
+#check if pipeline has already run
+if [ -d  ${ydDIR} ]
+then
+  #if has then in test mode
+  echo "Test Mode"
+else
+  #if not then in normal mode so move yesterday's outputs to the archive
+  mkdir zARCHIVE/${yesterday} #makes folder for yesterday's outputs in archive
+  mv xOUTPUTS/* zARCHIVE/${yesterday} #moves outputs to the folder
+  mv zARCHIVE/${yesterday}/tns_public_objects.csv xOUTPUTS
+  mv zARCHIVE/${yesterday}/obs_requests.json xOUTPUTS
+  mv zARCHIVE/${yesterday}/observations.csv xOUTPUTS #move these back as they are always updated
+  cp zARCHIVE/${yesterday}/requests_${yesterday}.json xOUTPUTS #copy previous requests back as need them in obs_check
+
+  rm ${homedir}/RITA/fail.txt #remove file indicating that LT connection failed (if exists)
+fi
 
 ### BILLY ###
 cd ${homedir}/BILLY
