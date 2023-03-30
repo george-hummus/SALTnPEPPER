@@ -38,7 +38,7 @@ else:
         allobs = {}
 
     # load in the black list
-    blist = csv2list("black_list.csv")
+    blist = csv2list("blacklist.csv")
 
     #remove any entries from the list which are in the black list
     bad_idx = [] #empty list to add bad indices to
