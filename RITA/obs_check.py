@@ -131,7 +131,7 @@ else:
                         #if the target has been observed for full time requested
                         with open("blacklist.csv","a") as blist:
                             #append name to black list to avoid repeats
-                            blist.write(f"{target}\n")
+                            blist.write(f"{target[0]}\n")
 
                     #extract proposal and group ids from the first log entry for the target
                     propid = trows.T[2][0]
