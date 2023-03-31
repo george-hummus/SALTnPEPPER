@@ -21,6 +21,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import os
+import glob
 
 ################# FUNCTIONS FOR UPDATING TNS DATABASE ##########################
 
@@ -919,5 +920,146 @@ def LTcoords(RA, DEC):
         Dec.append(dec)
 
     return Ra, Dec
+
+################################################################################
+
+def request(plist, blacklist, times):
+    """
+    Tries to sends observations requests of the highest priority transients from
+    a specified priority score list to the Liverpool Telescope.
+    Arguments:
+        - plist: path to the priority score list
+        - blacklist: list of transient names not to be included in requests
+        - times: a dict containing the start and end times and dates for the
+            request as strings in the format "YYYY-MM-DD" for dates and
+            "HH:MM:SS" for times.
+    Outputs:
+        - req_info: a dict containg the information regarding the request including:
+            the status of the request, the UID (if request worked), the targets' names
+            and coordinates, the constraints for the observations, and the se-up.
+    """
+
+    #blank dict to add info of morning request to
+    req_info = {}
+
+    # load in the PEPPER Fast priority list CSV file
+    dummy, dummy2, flist = loadDB(plist)
+
+    #remove any entries from the priority list which are in the black list
+    bad_idx = [] #empty list to add bad indices to
+    for idx, entry in enumerate(flist):
+        if (entry[1]+entry[2]) in blacklist: #check if transient name is in black_list
+            bad_idx.append(idx) #if it is append to bad indices list
+    flist = np.delete(flist,bad_idx,0) #deletes bad rows
+
+    if flist.shape[0] == 0: #check if there are targets in the list
+        print("No sutible targets to request observations of.")
+        req_info["status"] = "No requests made." #add status
+
+    else: #if there are targets then can submit observations to the LT
+
+        ### Extract targets to request observations of ###
+        #only extract targets with a priorty scores less than 0.5 and if min > 0.5 then the first target
+        pmin = np.min(flist.T[-2].astype(float))
+        if pmin < 0.5:
+            bad_idx = [] #empty list to add bad indices to
+            for idx, entry in enumerate(flist):
+                if float(entry[-2]) > 0.5: #check the pscore the target
+                    bad_idx.append(idx) #if greater than 0.5 append to bad indices list
+            top = np.delete(flist,bad_idx,0) #deletes bad rows
+        else:
+            top = np.array([flist[0]])
+
+        #create list of dicts containing the transients names and RA and Dec in correct format for ltrtml
+        names = top.T[1]+top.T[2]
+        RA = top.T[3].astype(float)
+        DEC = top.T[4].astype(float)
+
+        ra, dec = LTcoords(RA,DEC)
+
+        #make list of target dicts
+        targets = []
+        for i in range(len(ra)):
+            targets.append( {"name":names[i],"RA":ra[i],"DEC":dec[i]} )
+        #add targets to the requests record
+        req_info["targets"]=targets
+
+        # load in the observating parameters
+        # open file containing the times sunset/rise and twilight times for the night ahead
+        with open('obs_prams.json') as json_file:
+            obs_prams = json.load(json_file)
+
+
+        ### Set up constraints ###
+
+        # start date and time
+        sdate = times["start_date"]
+        stime = times["start_time"]
+
+        # end date and time
+        edate = times["end_date"]
+        etime = times["end_time"]
+
+        # make the constraints dict
+        constraints = {
+            'air_mass': obs_prams['air_mass'],      # 1.74 airmass corresponds to 35deg alt
+            'sky_bright': obs_prams['sky_bright'], # any as targets shouldn't be near moon
+            'seeing': obs_prams["seeing"],        # Maximum allowable FWHM seeing in arcsec
+            'photometric': 'yes',                # Photometric conditions, ['yes', 'no']
+            'start_date': sdate,                # Start Date should be today
+            'start_time': stime,               # Start Time should be when darktime starts
+            'end_date': edate,                # End Date should be next day
+            'end_time': etime,               # End Time when
+        }
+        # add constraints to the request record
+        req_info["constraints"]=constraints
+
+
+        ### Set up observations ###
+        # we want to observe with MOPTOP in the R-band for 880s with slow rot speed for all targets
+
+        # make a list of observation dicts for each target
+        obs = []
+        for target in targets:
+            observation = {
+                'instrument': 'Moptop',
+                'target': target,
+                'filters': {obs_prams["filter"]: {'exp_time': obs_prams['exp_time'],
+                                  'rot_speed': obs_prams['rot_speed']}}}
+            obs.append(observation)
+        #add info from obsevation to set-up part of request record
+        set_up = {
+            'instrument': 'Moptop',
+            'filter': obs_prams['filter'],
+            'exp_time': obs_prams['exp_time'],
+            'rot_speed': obs_prams['rot_speed']
+            }
+        req_info["set_up"]=set_up
+
+
+        ### Set up the credentials ###
+        # need to load the settings in from separate json - these are secrete so don't publish
+
+        with open('LT_creds.json') as json_file:
+            settings = json.load(json_file)
+
+
+        ### Set up connection to the LT ###
+        try:
+            obs_object = ltrtml.LTObs(settings)
+
+
+            ### Send Observation request and save the user id ###
+            uid, error = obs_object.submit_group(obs, constraints)
+
+            #add uid and any errors to the request record
+            req_info["uid"] = uid
+            req_info["status"] = error
+
+        except:
+            req_info["status"] = "Connection to LT failed."
+            print("could not access the LT - please check credentials")
+
+    return req_info
 
 ################################################################################

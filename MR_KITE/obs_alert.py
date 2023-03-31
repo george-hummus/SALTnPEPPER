@@ -28,9 +28,9 @@ correspondents = csv2list("correspondents.csv")
 yesterday = (dt.datetime.utcnow() - dt.timedelta(days=1))
 date = yesterday.strftime('%Y-%m-%d')
 
-#if connection did not fail on both or either of the nights then...
+#if connection did not fail on both or either of the requests then...
 if len(glob.glob("../RITA/fail.txt")) == 0:
-    #load in CSv containing all PEPPER observations
+    #load in CSV containing all PEPPER observations
     obspath = "../xOUTPUTS/observations.csv"
     dummy, headers, DB = loadDB(obspath)
 
@@ -54,26 +54,22 @@ if len(glob.glob("../RITA/fail.txt")) == 0:
         table = f"<p><font color=#FF0000><em> No transients were requested for observation with MOPTOP on the night starting {date} as none met the requirements of PEPPER Fast. Therefore, attachments were not created. </em></font> </p>"
 
 else:
-    #if connection failed on both nights then show the requests that were made for the past night (i.e., yesterday's and this morning's requests)
+    #if connection failed on both nights then show the requests that were made for the past night
 
-    #todays and yesterdays requests
-    requests = glob.glob("../xOUTPUTS/requests*")
+    #load the request record
+    with open("../xOUTPUTS/request_records.json","r") as r:
+        allreqs = json.load(r)
 
-    reqs = {}
-    for req in requests:
-        try: #try to open requests json as dict
-            with open(req, "r") as r:
-                jfile = json.load(r)
-            #if can open add observations from requests file to dict with filename as key
-            reqs[f"{os.path.basename(req)}"]=jfile["observations"]
-        except:
-            #if can't open then no requests were made
-            reqs[f"{os.path.basename(req)}"]="No requests made on this date."
-    #convert the dict to a string so can add to email (with html line breaks)
-    reqstr = "<pre>"+json.dumps(reqs,indent=4).replace("\n","<br>")+"</pre>"
+    if date in allreqs.keys():
+        #open requests for past night and convert the dict to a string to
+        #add to email (with html line breaks)
+        reqs = "<pre>"+json.dumps(allreqs[date],indent=4).replace("\n","<br>")+"</pre>"
+    else:
+        #if can't open then no requests were made
+        reqs = "No requests made on the previous night."
 
 
-    table = f"<p><font color=#FF0000><em> No transients were requested for observation with MOPTOP on the night starting {date} as the connection to the LT failed. Therefore, the attachments were not created. </em></font> <br><br> Here is what should have been requested:<br> {reqstr} </p>"
+    table = f"<p><font color=#FF0000><em> No transients were requested for observation with MOPTOP on the night starting {date} as the connection to the LT failed. Therefore, the attachments were not created. </em></font> <br><br> Here is what should have been requested:<br> {reqs} </p>"
 
 
 
@@ -91,9 +87,12 @@ message['To'] = "PEPPER Survey Collaborators"
 html_part = MIMEText(fulltxt,'html')
 message.attach(html_part)
 
-try: #try to atatch files if they exsist
-    ### attach csv file and spliced log ###
-    slog = glob.glob("../xOUTPUTS/*spliced.log")[0] #path to the spliced log
+
+### attach csv file and spliced log (if latter was made) ###
+slog_glob = glob.glob("../xOUTPUTS/*spliced.log")
+
+if len(slog_glob) != 0:
+    slog = slog_glob[0] #path to the spliced log
     attachments = [obspath, slog]
     for file in attachments:
         with open(file, "rb") as attachment:
@@ -103,8 +102,9 @@ try: #try to atatch files if they exsist
         encoders.encode_base64(part)
         part.add_header("Content-Disposition",f"attachment; filename= {os.path.basename(file)}")
         message.attach(part)
-except Exception as e:
-    print(e)
+else:
+    print("Spliced log not made.")
+
 
 ### SEND EMAIL ###
 try:

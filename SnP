@@ -1,5 +1,7 @@
 #!/bin/bash
-echo "" #gap between log entries
+
+#line between log entries
+echo "" ; echo "-----------------------------------------------------" ; echo ""
 date -u #prints the date out for the log
 homedir=$(pwd) #the home directory to return to once module is finished
 
@@ -14,14 +16,15 @@ then
   echo "Test Mode"
 else
   #if not then in normal mode so move yesterday's outputs to the archive
-  mkdir zARCHIVE/${yesterday} #makes folder for yesterday's outputs in archive
-  mv xOUTPUTS/* zARCHIVE/${yesterday} #moves outputs to the folder
+  # makes folder for yesterday's outputs in archive and move them there
+  mkdir zARCHIVE/${yesterday}
+  mv xOUTPUTS/* zARCHIVE/${yesterday}
+  #move these back as they are live documents
   mv zARCHIVE/${yesterday}/tns_public_objects.csv xOUTPUTS
-  mv zARCHIVE/${yesterday}/obs_requests.json xOUTPUTS
-  mv zARCHIVE/${yesterday}/observations.csv xOUTPUTS #move these back as they are always updated
-  cp zARCHIVE/${yesterday}/requests_${yesterday}.json xOUTPUTS #copy previous requests back as need them in obs_check
-
-  rm ${homedir}/RITA/fail.txt #remove file indicating that LT connection failed (if exists)
+  mv zARCHIVE/${yesterday}/request_records.json xOUTPUTS
+  mv zARCHIVE/${yesterday}/observations.csv xOUTPUTS
+  #remove file indicating that LT connection failed (if exists)
+  rm ${homedir}/RITA/fail.txt
 fi
 
 ### BILLY ###
@@ -31,7 +34,7 @@ cd ${homedir}
 
 ### LUCY ###
 cd ${homedir}/LUCY
-python pscores.py #make the new priorty score lists
+python pscores.py #make the new priority score lists
 cd ${homedir}
 
 ### MR. KITE ###
@@ -39,16 +42,20 @@ cd ${homedir}/MR_KITE
 python email_alert.py #send the email alert
 cd ${homedir}
 
-### RITA ###
+### RITA 1 ###
 cd ${homedir}/RITA
-python followup.py #request observations from LT
-python obs_check.py #check is targets requested were observed
+python requestA.py #request 2nd set of observations from LT for this night
+python obs_check.py #check if targets requested were observed
 cd ${homedir}
 
 ### MR. KITE 2 ###
 cd ${homedir}/MR_KITE
 python obs_alert.py #send the observations alert email
 cd ${homedir}
+
+### RITA 2 ###
+cd ${homedir}/RITA
+python requestB.py #request 1st set of observations from LT for next night
 
 ### SGT. P ###
 cd ${homedir}/SGT_P

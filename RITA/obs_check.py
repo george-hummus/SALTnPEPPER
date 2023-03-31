@@ -23,46 +23,49 @@ yesterday = today - dt.timedelta(days=1)
 #check if the checks have already been performed
 obspath = "../xOUTPUTS/observations.csv"
 dummy, dummy2, DB = loadDB(obspath)
-if yesterday.strftime('%Y-%m-%d') in DB.T[0]:
+
+if yesterday.strftime('%Y-%m-%d') in DB:
     print("Last night's observation requests have already been checked.")
 
 else:
     #load in observation file
-    with open(f"../xOUTPUTS/obs_requests.json","r") as fp:
+    with open("../xOUTPUTS/request_records.json","r") as fp:
         allobs = json.load(fp)
 
-    try: #try to extract the obs from today
-        td_entry = allobs[today.strftime('%Y-%m-%d')]
+    try: #try to extract request 1 status from last night
+        req1 = allobs[yesterday.strftime('%Y-%m-%d')]["Request-1"]
+        req1S = req1["status"]
     except:
-        td_entry = "Connection to LT failed."
-        #date not present so treat as non-connection to LT
+        req1S = "Connection to LT failed."
+        #if request not present so treat as non-connection to LT
 
-    try: #try to extract the obs from yesterday
-        yd_entry = allobs[yesterday.strftime('%Y-%m-%d')]
+    try: #try to extract request 2 status from last night
+        req2 = allobs[yesterday.strftime('%Y-%m-%d')]["Request-2"]
+        req2S = req2["status"]
     except:
-        yd_entry = "Connection to LT failed."
+        req2S = "Connection to LT failed."
         #date not present so treat as non-connection to LT
 
     ### Add requests info to list if connection was made ###
     requests = []
-    if td_entry != "Connection to LT failed.":
-        #if today's didn't fail add requests file to list
-        requests.append(td_entry)
-    if yd_entry != "Connection to LT failed.":
-        #if yesterday's didn't fail add requests file to list
-        requests.append(yd_entry)
+    if req1S != "Connection to LT failed.":
+        #if request 1 didn't fail add requests file to list
+        requests.append(req1)
+    if req2S != "Connection to LT failed.":
+        #if request 2 didn't fail add requests file to list
+        requests.append(req2)
 
 
     if len(requests) == 0: #i.e., no connection was made on either date
         with open("fail.txt","w") as fail:
-            fail.write("")
+            fail.write("We're more popular than Jesus now; I don't know which will go first – rock 'n' roll or Christianity. ")
 
     else: #i.e., connection was made at least on one date
 
         ## load in targets names and its uid from requests of today and yesterday ###
         rtargets = [] #empty list to fill with tuples of requested target and their UID
         for rqst in requests:
-            if rqst == "No requests made.":
+            if rqst["status"] == "No requests made.":
                 #if no requests made for date then continue
                 continue
             else:
@@ -75,7 +78,7 @@ else:
             released = False
             while released == False:
                 ### Try to download LT log for the previous night using curl ###
-                cmd = f'curl https://telescope.livjm.ac.uk/data/archive/webfiles/Logs/lt//{yesterday.strftime("%Y%m%d")}.log > ../xOUTPUTS/LT{yesterday.strftime("%Y%m%d")}.log'
+                cmd = f'curl -s https://telescope.livjm.ac.uk/data/archive/webfiles/Logs/lt//{yesterday.strftime("%Y%m%d")}.log > ../xOUTPUTS/LT{yesterday.strftime("%Y%m%d")}.log'
                 subprocess.call(cmd,shell=True)
 
                 #open log and read all lines to a list
