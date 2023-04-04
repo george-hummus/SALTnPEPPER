@@ -1055,7 +1055,7 @@ def request(plist, blacklist, times):
 
             if error == "": #if no error then add uid and any errors to the request record
                 req_info["uid"] = uid
-                req_info["status"] = error
+                req_info["status"] = "Requests made successfully."
             else: #if there was error then requests failed
                 req_info["status"] = "Connection to LT failed."
                 print("could not access the LT - please check credentials")
