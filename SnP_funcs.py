@@ -1,5 +1,5 @@
 """
-The functions that are used in all the modules of PAF-UP.
+The functions that are used in all the modules of the SALT&PEPPER pipeline
 
 Author: George Hume
 2023
@@ -1052,9 +1052,14 @@ def request(plist, blacklist, times):
             ### Send Observation request and save the user id ###
             uid, error = obs_object.submit_group(obs, constraints)
 
-            #add uid and any errors to the request record
-            req_info["uid"] = uid
-            req_info["status"] = error
+
+            if error == "": #if no error then add uid and any errors to the request record
+                req_info["uid"] = uid
+                req_info["status"] = error
+            else: #if there was error then requests failed
+                req_info["status"] = "Connection to LT failed."
+                print("could not access the LT - please check credentials")
+
 
         except:
             req_info["status"] = "Connection to LT failed."

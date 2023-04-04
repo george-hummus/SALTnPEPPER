@@ -3,3 +3,6 @@ smtplib
 astropy
 suds-py3
 lxml
+pandas
+matplotlib
+numpy
