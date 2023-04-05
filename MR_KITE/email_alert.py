@@ -14,11 +14,12 @@ from email.mime.image import MIMEImage
 import os
 from datetime import datetime
 import csv
+import numpy as np
 import json
 import sys
 import glob
 sys.path.append('..')
-from SnP_funcs import loadDB, csv2list, array2html, visplots
+from SnP_funcs import loadDB, csv2list, array2html, visplots, LTcoords
 
 #list of emails addresses to send the email to as CSV file
 correspondents = csv2list("correspondents.csv")
@@ -42,6 +43,13 @@ plists.append(fastlist)
 
 ### Make the attachments and return paths ###
 htmlpath = f"{fastlist[0:-4]}.html"
+#make RA and DEC have "hours/degs : mins : secs" format
+fastDB.T[3], fastDB.T[4]  = LTcoords(fastDB.T[3], fastDB.T[4])
+#round numerical values in list to 5dp
+columns = (8,9,10,11) #indices of columns that need rounding
+for c in columns:
+    fastDB.T[c] = np.around(fastDB.T[c].astype(float),5)
+fastDB = fastDB.astype(str)
 array2html(headers,fastDB,htmlpath) #html table of fast list
 vispath = visplots(plists) #visiblity plots of highest priority targets in both lists
 
