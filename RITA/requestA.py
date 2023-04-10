@@ -13,7 +13,7 @@ import glob
 sys.path.append('..')
 from SnP_funcs import csv2list, request
 
-now = dt.datetime.now()
+now = dt.datetime.utcnow()
 yesterday = now - dt.timedelta(days=1)
 yd_str = yesterday.strftime('%Y-%m-%d')
 

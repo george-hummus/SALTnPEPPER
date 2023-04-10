@@ -13,7 +13,7 @@ import glob
 sys.path.append('..')
 from SnP_funcs import csv2list, request
 
-now = dt.datetime.now()
+now = dt.datetime.utcnow()
 td_str = now.strftime('%Y-%m-%d')
 
 #load in obs_requests.json - will exist as request A runs before this
