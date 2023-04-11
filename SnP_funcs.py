@@ -22,6 +22,7 @@ import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import os
 import glob
+import ltrtml
 
 ################# FUNCTIONS FOR UPDATING TNS DATABASE ##########################
 
