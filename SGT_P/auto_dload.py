@@ -52,7 +52,7 @@ pd_file = open("past_downloads.csv","a")
 #download new data
 for entry in new_obs:
     if entry.size == 0:
-        continue #if nothing in the entry then skip 
+        continue #if nothing in the entry then skip
 
     #convert from YYYY-MM-DD to YYYMMDD fmt
     date = "".join(entry[0].split("-"))
@@ -64,11 +64,13 @@ for entry in new_obs:
     #constructing the wget command to download data
     url = f"https://telescope.ljmu.ac.uk/DataProd/RecentData/{propID}/{date}/"
     sign_in = f'--user={propID} --password={psswrd}'
-    cmd = f'wget -r -np -k -A *.tgz {sign_in} {url} -nd -e -nv robots=off'
+    cmd = f'wget -r -np -k -q -A *.tgz {sign_in} {url} -nd -e robots=off'
     #this will download all .tgz files created for this night and proposal ID
 
     #download
+    print(f"downloading data from {entry[0]} for proposal {propID}")
     subprocess.call(cmd,shell=True)
+    print("download finished\n")
 
     #check that download was a sucess
     if len(glob.glob("*.tgz")) > 0:
