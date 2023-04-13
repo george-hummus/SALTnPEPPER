@@ -13,9 +13,10 @@
 
 ### Instructions
 - Copy the whole file structure to your device.
-- Fill out the credential files (bot_info.json, email_creds.json, and LT_creds.json) with the required information.
-- Add email addresses to correspondents.csv (one per line!)
+- Fill out the credential files ("bot_info.json", "email_creds.json", "LT_creds.json", and "LTarchive_creds.json") with the required information.
+- Specifiy the observational parameters in the "obs_prams.json" file.
+- Add any email addresses to receive alerts in "correspondents.csv" (one per line!)
 - Install the required packages using requirements.txt via `pip install -r requirements.txt`.
-- Download `ltrtml` from [here](https://github.com/LivTel/ltpy) and put ltrtml.py in the RITA directory.
+- Download `ltrtml` from [here](https://github.com/LivTel/ltpy) and put "ltrtml.py" in the base SALT&PEPPER directory.
 - `chmod +x SnP`
-- Use cron tab to automate SALT&PEPPER to run every night. E.g., `10 01 * * * cd {your path to SALT&PEPPER directory}; bash SnP >> SnP.log 2>&1` will run SALT&PEPPER every day at 01:10 local time.
+- Use cron tab to automate SALT&PEPPER to run every night. E.g., `10 01 * * * cd {your path to SALT&PEPPER directory}; bash SnP >> SnP.log 2>&1` will run SALT&PEPPER every day at 01:10 local time and add outputs to a log.
