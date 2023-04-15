@@ -426,11 +426,42 @@ def Visibility(ra, dec, lat, long, elv, ephm = 'de421.bsp'):
 
 ################################################################################
 
+def xmatch_rm(tlist,cat_coords,sep_th):
+    '''Function to remove any transients from a list if they are too close to a target in a catalogue.
+    Arguments:
+        - tlist: array representing the targets with RA and DEC in column indices 3 and 4
+        - cat_coords: array containg two arrays which contain the catalogue targets' RA and DEC. Can be in "hh:mm:ss" "+/-ddmmss" format or decimal degrees using astropy units.
+        - sep_th: angular separation below which transients are removed (needs to be astropy units float)
+    Outpts:
+        - new_tlist: list of transients with the those to close to catalogue objects removed
+    '''
+
+    #extract ra and dec from catalogue and convert into skycoords object
+    cRA, cDEC = cat_coords
+    CAT = SkyCoord(ra=cRA, dec=cDEC)
+
+    #extract ra and dec of transients
+    RAs, DECs = tlist.T[3].astype(float), tlist.T[4].astype(float)
+
+    #make skycoords object of the transients in list
+    transients = SkyCoord(ra=RAs*u.deg,dec=DECs*u.deg)
+
+    ## Cross Match ##
+    idx, d2d, d3d = transients.match_to_catalog_sky(CAT)
+
+    ## Remove transients with separation to match lower than sep_th ##
+    sep_mask = d2d >= sep_th #mask to remove those with lower seps than threshold
+    new_tlist = tlist[sep_mask] #apply mask
+
+    return new_tlist
+
+################################################################################
+
 def thresholds(DB,mill):
     """
     Removes targets from a database if they don't meet the thresholds of 3 different variables - observable time, lunar separation, and discovery magnitude.
 	Arguments:
-    	- DB: numpy object array of the list of targets with discovery magnitude, observable time, and lunar separation in column indices -4, -3, and -2 respectively.
+    	- DB: numpy object array of the list of targets with RA, Dec, discovery magnitude, observable time, and lunar separation in column indices 3, 4, -4, -3, and -2 respectively.
     	- mill: the illumination percentage of the moon as a float
 	Output:
     	- t_array: same database as ingested but with transients removed that don't meet the thresholds set.
@@ -465,8 +496,40 @@ def thresholds(DB,mill):
             bad_idx.append(idx)
         elif abs(float(entry[10])) <= glat_th:
             bad_idx.append(idx) #check galactic latitude
-    t_array = np.delete(DB,bad_idx,0) #deletes rows with no observable time
+    th_list = np.delete(DB,bad_idx,0) #deletes rows with no observable time
 
+    #### threshold for catalogues ###
+    ## Galaxy separations ##
+    #open catalogue as a numpy array
+    Gcat = np.loadtxt("../GLADE_2.4.txt", delimiter=' ',dtype=object)
+
+    #extract ra and dec from catalogue
+    gRA, gDEC = Gcat.T[6].astype(float)*u.degree, Gcat.T[7].astype(float)*u.degree
+
+    #execute galaxy separation thresholding
+    glist = xmatch_rm(th_list,[gRA,gDEC],1*u.arcsec)
+
+    ## Bright star separations ##
+    with open("../bsc5.dat") as scat:
+        star_cat = scat.readlines()
+
+    sRA, sDEC = [], []
+    for star in star_cat:
+        #check that there are values
+        if star[75:77] == "  ":
+            continue
+        else:
+            ra = f"{star[75:77]}h{star[77:79]}m{star[79:83]}s"
+            dec = f"{star[83:84]}{star[84:86]}d{star[86:88]}m{star[88:90]}s"
+
+            sRA.append(ra)
+            sDEC.append(dec)
+
+    #execute bright star separation thresholding on already thresholded list
+    slist = xmatch_rm(glist,[sRA,sDEC],7*u.arcmin)
+    
+
+    t_array = np.array(slist)
     return t_array
 
 ################################################################################
