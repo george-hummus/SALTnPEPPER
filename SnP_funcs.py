@@ -17,11 +17,17 @@ from skyfield.framelib import galactic_frame
 import subprocess
 from astropy import units as u
 from astropy.coordinates import SkyCoord
+import warnings #stops warning re: deprecation
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore")
+    from astroquery.vizier import Vizier
+    from astroquery.ipac.ned import Ned
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import os
 import glob
+import requests
 import ltrtml
 
 ################# FUNCTIONS FOR UPDATING TNS DATABASE ##########################
@@ -426,7 +432,7 @@ def Visibility(ra, dec, lat, long, elv, ephm = 'de421.bsp'):
 
 ################################################################################
 
-def xmatch_rm(tlist,cat_coords,sep_th):
+def xmatch_rm(tlist):
     '''Function to remove any transients from a list if they are too close to a target in a catalogue.
     Arguments:
         - tlist: array representing the targets with RA and DEC in column indices 3 and 4
@@ -436,9 +442,12 @@ def xmatch_rm(tlist,cat_coords,sep_th):
         - new_tlist: list of transients with the those to close to catalogue objects removed
     '''
 
-    #extract ra and dec from catalogue and convert into skycoords object
-    cRA, cDEC = cat_coords
-    CAT = SkyCoord(ra=cRA, dec=cDEC)
+    ## Transients ##
+    #names of the transients
+    tnames = tlist.T[1]+tlist.T[2]
+
+    #magnitudes of transients
+    tmags = tlist.T[7].astype(float)
 
     #extract ra and dec of transients
     RAs, DECs = tlist.T[3].astype(float), tlist.T[4].astype(float)
@@ -446,14 +455,120 @@ def xmatch_rm(tlist,cat_coords,sep_th):
     #make skycoords object of the transients in list
     transients = SkyCoord(ra=RAs*u.deg,dec=DECs*u.deg)
 
+
     ## Cross Match ##
-    idx, d2d, d3d = transients.match_to_catalog_sky(CAT)
+    Xmatches = []
+    for idx, t in enumerate(transients):
 
-    ## Remove transients with separation to match lower than sep_th ##
-    sep_mask = d2d >= sep_th #mask to remove those with lower seps than threshold
-    new_tlist = tlist[sep_mask] #apply mask
+        #cross-match with GLADE+ catalogue via VizieR
+        xmatch = Vizier.query_region(t, radius = 1*u.arcmin, catalog = 'VII/291/gladep')
 
-    return new_tlist
+        if len(xmatch) == 0: #if there is no match within 1 arcmin
+            Xmatches.append([tnames[idx],tmags[idx],None,None,None,None,None])
+
+        else: #if there is a match within 1 arcmin
+
+            if len(xmatch[0]) == 1: #if only one match
+                #galaxy object
+                gRA = xmatch[0]["RAJ2000"][0]
+                gDEC = xmatch[0]["DEJ2000"][0]
+                gal = SkyCoord(ra=gRA*u.deg,dec=gDEC*u.deg)
+
+                separ = t.separation(gal).to(u.arcsec)
+                Bmag = xmatch[0]["Bmag"][0]
+
+            else: #if more than one match use one with lowest separation
+
+                seps = []
+                for g in range(len(xmatch[0])): #loop through galaxies that matched
+
+                    gRA = xmatch[0]["RAJ2000"][g]
+                    gDEC = xmatch[0]["DEJ2000"][g]
+                    gal = SkyCoord(ra=gRA*u.deg,dec=gDEC*u.deg)
+
+
+                    seps.append(t.separation(gal).to(u.arcsec))
+
+                mIDX = seps.index(min(seps))
+                separ = seps[mIDX]
+                gal = SkyCoord(ra=xmatch[0]["RAJ2000"][mIDX]*u.deg,dec=xmatch[0]["DEJ2000"][mIDX]*u.deg)
+                Bmag = xmatch[0]["Bmag"][mIDX]
+
+
+            #find the offical name of host galaxy via NED query
+            nedquery = Ned.query_region(gal, radius=1 * u.arcsec)
+            if len(nedquery) != 0: #if there is a match in NED
+
+                off_name = nedquery["Object Name"][0]
+
+                #download whole html code for object page in HyperLEDA website
+                r = requests.get(f"https://leda.univ-lyon1.fr/ledacat.cgi?o={off_name}")
+                HLtxt = r.text
+                #slice out the logd25 value (log of apparent diameter, where d25 is in 0.1 arcmin)
+                if HLtxt.find(">logd25<") != -1: #if can find d25 value
+                    logd25 = float(HLtxt[HLtxt.find(">logd25<"):HLtxt.find("</td><td>log(0.1 arcmin)")].split()[1])
+                    appR = (10**(logd25-1) * u.arcmin)/2 #apparent radius (hence divide by 2)
+
+                    if separ > appR:
+                        hosted = False
+                    else:
+                        hosted = True
+
+                    appR = appR.to(u.arcsec).value
+
+                else: #if cannot find a d25 value
+                    appR = None
+                    hosted = None
+
+            else: #if there is not a match in NED use GALDE+ catalogue number for galaxy
+                off_name = f"GLADE_{xmatch[0]['GLADE_'][0]}"
+                appR = None
+                hosted = None
+
+            Xmatches.append([tnames[idx],tmags[idx],off_name,Bmag,appR,separ.value,hosted])
+
+    Xmatches = np.array(Xmatches,dtype=object)
+
+
+    ## thresholding ##
+    mask = []
+    for entry in Xmatches:
+        if entry[2] == None:
+            #don't discard if there is no match
+            mask.append(True)
+        else:
+            #if is host compare magnitudes
+            if entry[1] <= entry[3]:
+                #keep if the transient magnitude is comparable to galaxy magnitude
+                mask.append(True)
+            else:
+                if entry[4] == None:
+                    #discard if no radius recorded
+                    mask.append(False)
+                else:
+                    #compare radius and separation
+                    if entry[-2] <= 0.25*entry[4]:
+                        #discard if target within 25% of radius from galaxy centre
+                        mask.append(False)
+                    else:
+                        #otherwise keep
+                        mask.append(True)
+
+    #apply mask to tlist to remove unwanted entries
+    th_list = tlist[mask]
+
+    #apply mask to list of offical names to get possible hosts
+    new_Xmatches = Xmatches[mask]
+    hosts = []
+    for entry in new_Xmatches:
+        if entry[-1] != False:
+            hosts.append(entry[2])
+        else:
+            hosts.append(None)
+    hosts = np.array(hosts,dtype="str")
+
+    #return new list with possible hosts in second to last columns (before internal name)
+    return np.concatenate((th_list,np.resize(hosts,(hosts.size,1))),axis=1)
 
 ################################################################################
 
@@ -498,38 +613,11 @@ def thresholds(DB,mill):
             bad_idx.append(idx) #check galactic latitude
     th_list = np.delete(DB,bad_idx,0) #deletes rows with no observable time
 
-    #### threshold for catalogues ###
     ## Galaxy separations ##
-    #open catalogue as a numpy array
-    Gcat = np.loadtxt("../GLADE_2.4.txt", delimiter=' ',dtype=object)
-
-    #extract ra and dec from catalogue
-    gRA, gDEC = Gcat.T[6].astype(float)*u.degree, Gcat.T[7].astype(float)*u.degree
-
     #execute galaxy separation thresholding
-    glist = xmatch_rm(th_list,[gRA,gDEC],1*u.arcsec)
+    t_array = xmatch_rm(th_list)
 
-    ## Bright star separations ##
-    with open("../bsc5.dat") as scat:
-        star_cat = scat.readlines()
-
-    sRA, sDEC = [], []
-    for star in star_cat:
-        #check that there are values
-        if star[75:77] == "  ":
-            continue
-        else:
-            ra = f"{star[75:77]}h{star[77:79]}m{star[79:83]}s"
-            dec = f"{star[83:84]}{star[84:86]}d{star[86:88]}m{star[88:90]}s"
-
-            sRA.append(ra)
-            sDEC.append(dec)
-
-    #execute bright star separation thresholding on already thresholded list
-    slist = xmatch_rm(glist,[sRA,sDEC],7*u.arcmin)
-    
-
-    t_array = np.array(slist)
+    #return with possible hosts added to end
     return t_array
 
 ################################################################################
@@ -713,7 +801,7 @@ def priority_list(database,date,Slow=True):
 
 
         # urls to last column #
-        int_names = pDB.T[-2] # locally saved internal names of targets
+        int_names = pDB.T[-3] # locally saved internal names of targets
 
 
         #make the url by finding the ZTF name (if it exsists)
@@ -749,7 +837,7 @@ def priority_list(database,date,Slow=True):
 
 
         # combine together and array #
-        targets = np.delete(pDB.T,-2,0).T #remove internal name column
+        targets = np.delete(pDB.T,-3,0).T #remove internal name column
         targets = np.concatenate((targets,np.resize(urls,(urls.size,1))),axis=1) #add urls to databse
 
         return targets
