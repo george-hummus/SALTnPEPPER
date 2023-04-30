@@ -8,6 +8,7 @@ Author: George Hume
 ### IMPORTS ###
 import csv
 import json
+import time
 import numpy as np
 import datetime as dt
 from skyfield import almanac
@@ -125,7 +126,27 @@ def UPdate(ufile,date,database):
         csvwriter.writerow([date.strftime('%Y-%m-%d %H:%M:%S')]) #add date to first row
         csvwriter.writerows(database)
 
-################# FUNCTIONS FOR CALCULATING PRIORITY SCORES ##########################
+################################################################################
+
+def delay():
+    now = dt.datetime.utcnow()
+    nmn = dt.datetime.combine(now + dt.timedelta(days=1), dt.datetime.min.time()) #the next midnight
+
+    #find time to next midnight
+    t_diff = (nmn-now).total_seconds()/3600 #time in hrs to next midnight
+    if t_diff < 14:
+        later = nmn #if less than 14 hours to next midnight then wait
+    else: #if more than 14 hours then likely haven't downloaded new TNS yet
+        return  # no delay - download ASAP
+
+    #delay until later
+    while now < later:
+        now = dt.datetime.utcnow()
+
+    time.sleep(300) #wait 5 mins for TNS to release updates
+    return
+
+################# FUNCTIONS FOR CALCULATING PRIORITY SCORES ####################
 
 def TNSlice(database,date):
     """

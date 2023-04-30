@@ -11,11 +11,14 @@ import datetime as dt
 import sys
 import glob
 sys.path.append('..')
-from SnP_funcs import loadDB, dload, UPdate
+from SnP_funcs import loadDB, dload, UPdate, delay
 
 #TNS bot info
 with open('bot_info.json') as json_file:
     info = json.load(json_file)
+
+#delay - so new TNS databse is downloaded as soon as possible
+delay()
 
 if not os.path.isfile("../xOUTPUTS/tns_public_objects.csv"):
 	#if there is no local database present download it from the TNS
