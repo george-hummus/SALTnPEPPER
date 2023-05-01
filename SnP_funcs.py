@@ -568,8 +568,9 @@ def xmatch_rm(tlist):
                     mask.append(False)
                 else:
                     #compare radius and separation
-                    if entry[-2] <= 0.25*entry[4]:
+                    if entry[-2] <= (0.25*entry[4] + 2):
                         #discard if target within 25% of radius from galaxy centre
+                        #plus 2" to account for seeing
                         mask.append(False)
                     else:
                         #otherwise keep
