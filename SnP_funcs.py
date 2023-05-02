@@ -463,6 +463,122 @@ def xmatch_rm(tlist):
         - new_tlist: list of transients with the those to close to catalogue objects removed
     '''
 
+    ### Internal Functions ###
+    def host_name(xtable,host_idx):
+        """
+        Finds name of host galaxy that cross-mathced with a transient.
+        Arguments:
+            - xtable: table produced by query to ViziR
+            - host_idx: index of the host in the in xtable
+        Output:
+            - name: name of the host galaxy as a string
+        """
+        #names of the columns headers
+        namecols = xtable[0].colnames[1:]
+
+        for header in namecols:
+
+            entry = str(xtable[0][header][host_idx])
+
+            if (entry == "-") or (entry == "--"):
+                if header == "WISExSCOS":
+                    #deafult to GLADE name after 2MASS
+                    name = f"GLADE {str(xtable[0]['GLADE_'][host_idx])}"
+                else:
+                    #go to next column
+                    continue
+            else:
+                if header == "PGC":
+                    name = f"{header} {entry}"
+
+                elif header == "GWGC":
+                    name = entry
+
+                elif header == "HyperLEDA":
+                    if entry.isdigit():
+                        #if the name is a set of digits then need LEDA prefix
+                        name = f"LEDA {entry}"
+                    else:
+                        #if letters in the name then no prefix needed
+                        name = entry
+                else:
+                    name = f"2MASX {entry}"
+
+                break
+
+        return name
+
+    def d25_from_HL(host_name, sep):
+        """
+        Queries Hyper LEDA to find the apparent radius of a galaxy and then checks if hosts a transient.
+        Arguments:
+            - host_name: the name of the galaxy
+            - sep: the separtion of the transient to the galaxy in Astropy units of angle
+        Outputs:
+            - appR: the apparent radius of the galaxy in arcsecs as a float (set to None if no radius found)
+            - hosted: boolean indicating if transient resides within radius of galaxy (set to None if no radius found)
+        """
+
+        #download whole html code for object page in HyperLEDA website
+        r = requests.get(f"https://leda.univ-lyon1.fr/ledacat.cgi?o={host_name}")
+        HLtxt = r.text
+        #slice out the logd25 value (log of apparent diameter, where d25 is in 0.1 arcmin)
+        if HLtxt.find(">logd25<") != -1: #if can find d25 value
+            logd25 = float(HLtxt[HLtxt.find(">logd25<"):HLtxt.find("</td><td>log(0.1 arcmin)")].split()[1])
+            appR = (10**(logd25-1) * u.arcmin)/2 #apparent radius (hence divide by 2)
+
+            if sep > appR:
+                hosted = False
+            else:
+                hosted = True
+
+            appR = appR.to(u.arcsec).value
+
+        else: #if cannot find a d25 value
+            appR = None
+            hosted = None
+
+        return appR, hosted
+
+    def gal_info(xmatch,idx):
+        """
+        Returns properties of a galaxy from an Astroquery VizieR table.
+        Arguments:
+            - xmatch: the Astroquery VizieR table produced via cross-match with a transient
+            - idx: the index of the galaxy within the table
+        Outputs:
+            - name: name of the galaxy
+            - Bmag: the B-band apparent magnitude of the galaxy
+            - appR: the apparent radius of the galaxy in arcseconds from Hyper LEDA (set to None if no radius found)
+            - separ: the separtion between the galaxy and the transient in arcseconds
+            - hosted: boolean indicating if transient resides within radius of galaxy (set to None if no radius found)
+
+        Note - function returns outputs as a list.
+        """
+        #galaxy object
+        gRA = xmatch[0]["RAJ2000"][idx]
+        gDEC = xmatch[0]["DEJ2000"][idx]
+        gal = SkyCoord(ra=gRA*u.deg,dec=gDEC*u.deg)
+
+        separ = t.separation(gal).to(u.arcsec)
+        Bmag = xmatch[0]["Bmag"][idx]
+        name = host_name(xmatch,idx)
+
+        #query hyper leda with name for the apparent radius
+        appR, hosted = d25_from_HL(name,separ)
+
+        if appR == None:
+            #if no apparent radius found then query NED using coordinates for offical name
+            nedquery = Ned.query_region(gal, radius=1 * u.arcsec)
+            if len(nedquery) != 0:
+                #if there is a match in NED get new name
+                name = nedquery["Object Name"][0]
+                #query hyper leda with new name
+                appR, hosted = d25_from_HL(name,separ)
+
+        return [name,Bmag,appR,separ.value,hosted]
+
+
     ## Transients ##
     #names of the transients
     tnames = tlist.T[1]+tlist.T[2]
@@ -477,7 +593,7 @@ def xmatch_rm(tlist):
     transients = SkyCoord(ra=RAs*u.deg,dec=DECs*u.deg)
 
 
-    ## Cross Match ##
+    ## Cross Matching ##
     Xmatches = []
     for idx, t in enumerate(transients):
 
@@ -490,81 +606,82 @@ def xmatch_rm(tlist):
         else: #if there is a match within 1 arcmin
 
             if len(xmatch[0]) == 1: #if only one match
-                #galaxy object
-                gRA = xmatch[0]["RAJ2000"][0]
-                gDEC = xmatch[0]["DEJ2000"][0]
-                gal = SkyCoord(ra=gRA*u.deg,dec=gDEC*u.deg)
+                #find info for that galaxy
+                galaxy = gal_info(xmatch,0)
 
-                separ = t.separation(gal).to(u.arcsec)
-                Bmag = xmatch[0]["Bmag"][0]
+            else: #if more than one loop through all that matched
+                galaxies = []
 
-            else: #if more than one match use one with lowest separation
+                for g in range(len(xmatch[0])):
 
-                seps = []
-                for g in range(len(xmatch[0])): #loop through galaxies that matched
-
-                    gRA = xmatch[0]["RAJ2000"][g]
-                    gDEC = xmatch[0]["DEJ2000"][g]
-                    gal = SkyCoord(ra=gRA*u.deg,dec=gDEC*u.deg)
+                    #find info of particular galaxy
+                    G = gal_info(xmatch,g)
+                    galaxies.append(G) #add info to list
 
 
-                    seps.append(t.separation(gal).to(u.arcsec))
 
-                mIDX = seps.index(min(seps))
-                separ = seps[mIDX]
-                gal = SkyCoord(ra=xmatch[0]["RAJ2000"][mIDX]*u.deg,dec=xmatch[0]["DEJ2000"][mIDX]*u.deg)
-                Bmag = xmatch[0]["Bmag"][mIDX]
+                #convert galaxies list to array for masking
+                g_array = np.array(galaxies,dtype=object)
 
 
-            #find the offical name of host galaxy via NED query
-            nedquery = Ned.query_region(gal, radius=1 * u.arcsec)
-            if len(nedquery) != 0: #if there is a match in NED
+                #mask to extract galaxies with hosted=True
+                host_mask = g_array.T[-1] == True
+                #apply mask to get galaxies that host transient
+                host_gals = g_array[host_mask]
 
-                off_name = nedquery["Object Name"][0]
+                if host_gals.shape[0] != 0:
+                #if there are host galaxies pick one with lowest sep
+                    g_IDX = host_gals.T[3].argmin() #index of lowest sep galaxy
+                    galaxy = list(host_gals[g_IDX])
 
-                #download whole html code for object page in HyperLEDA website
-                r = requests.get(f"https://leda.univ-lyon1.fr/ledacat.cgi?o={off_name}")
-                HLtxt = r.text
-                #slice out the logd25 value (log of apparent diameter, where d25 is in 0.1 arcmin)
-                if HLtxt.find(">logd25<") != -1: #if can find d25 value
-                    logd25 = float(HLtxt[HLtxt.find(">logd25<"):HLtxt.find("</td><td>log(0.1 arcmin)")].split()[1])
-                    appR = (10**(logd25-1) * u.arcmin)/2 #apparent radius (hence divide by 2)
+                else:
+                #if no host galaxies remove any known not to host transient
+                    ukwn_mask = g_array.T[-1] != False #mask for above task
+                    #apply mask leaving only galaxies didn't get radii for
+                    ukwn_gals = g_array[ukwn_mask]
 
-                    if separ > appR:
-                        hosted = False
+                    if ukwn_gals.shape[0] != 0:
+                    #if there are galaxies didn't get radii for pick lowest sep galaxy
+                        g_IDX = ukwn_gals.T[3].argmin() #index of lowest sep galaxy
+                        galaxy = list(ukwn_gals[g_IDX])
+
                     else:
-                        hosted = True
+                    #if only galaxies known not to host pick lowest sep one
+                        g_IDX = g_array.T[3].argmin()
+                        galaxy = list(g_array[g_IDX])
 
-                    appR = appR.to(u.arcsec).value
 
-                else: #if cannot find a d25 value
-                    appR = None
-                    hosted = None
+            #add transient name and magnitude infront of galaxy's info
+            galaxy.insert(0,tnames[idx])
+            galaxy.insert(1,tmags[idx])
 
-            else: #if there is not a match in NED use GALDE+ catalogue number for galaxy
-                off_name = f"GLADE_{xmatch[0]['GLADE_'][0]}"
-                appR = None
-                hosted = None
+            #add list to cross-matches
+            Xmatches.append(galaxy)
 
-            Xmatches.append([tnames[idx],tmags[idx],off_name,Bmag,appR,separ.value,hosted])
 
     Xmatches = np.array(Xmatches,dtype=object)
-
 
     ## thresholding ##
     mask = []
     for entry in Xmatches:
         if entry[2] == None:
-            #don't discard if there is no match
-            mask.append(True)
+            #discard if there is no match
+            mask.append(False)
         else:
             #if is host compare magnitudes
-            if entry[1] <= entry[3]:
-                #keep if the transient magnitude is comparable to galaxy magnitude
+            if entry[1] < entry[3]:
+                #keep if the transient magnitude is brighter than galaxy magnitude
                 mask.append(True)
             else:
-                if entry[4] == None:
-                    #discard if no radius recorded
+                if entry[4] != False:
+                    if entry[-2] <= 2:
+                        #if no radius recorded and within 2" of host discard
+                        mask.append(False)
+                    else:
+                        #if is radius but larger sep than seeing limit then keep
+                        mask.append(True)
+                elif entry[4] == False:
+                    #if galaxy likely doesn't host transient then discard
                     mask.append(False)
                 else:
                     #compare radius and separation

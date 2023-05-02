@@ -49,11 +49,20 @@ fastDB.T[3], fastDB.T[4]  = LTcoords(fastDB.T[3], fastDB.T[4])
 columns = (8,9,10,12) #indices of columns that need rounding
 for c in columns:
     fastDB.T[c] = np.around(fastDB.T[c].astype(float),5)
-#add link to host name in HTML list
+
+#add links to host name in HTML list
 hosts = fastDB.T[-3].astype(str)
-hsts = np.char.replace(hosts, ' ', '+')
+hsts = np.char.replace(hosts, '+', '%2B')
+hsts = np.char.replace(hsts, ' ', '+') #used to make NED links work
 hs = np.char.replace(hosts, 'None', '') #used to make None entries not clickable
-fastDB.T[-3] = '<a href=' + "https://ned.ipac.caltech.edu/byname?objname=" +  hsts.astype(object) + '><div>' + hs +'</div></a>' #linke to NED page for the possible host galaxy
+for p in range(hosts.size):
+    if "GLADE" in hosts[p]:
+        #if a glade name then link to ViziR
+        fastDB.T[-3][p] = '<a href=' + "http://vizier.cds.unistra.fr/viz-bin/VizieR-5?-ref=VIZ6450d83424009d&-out.add=.&-source=VII/291/gladep&recno=" +  hsts[p].split("+")[-1] + '><div>' + hsts[p] +'</div></a>'
+    else:
+        #if other name link to the NED
+        fastDB.T[-3][p] = '<a href=' + "https://ned.ipac.caltech.edu/byname?objname=" + hsts[p]  + '><div>' + hs[p] +'</div></a>'
+
 fastDB = fastDB.astype(str)
 array2html(headers,fastDB,htmlpath) #html table of fast list
 vispath = visplots(plists) #visiblity plots of highest priority targets in both lists
