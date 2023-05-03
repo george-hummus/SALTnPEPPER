@@ -129,6 +129,10 @@ def UPdate(ufile,date,database):
 ################################################################################
 
 def delay():
+    """
+    Incduces a delay in the code until the next midnight if it is less than 14hrs in the future. This allows downloading of the TNS updates as close as possible to when they are released.
+    """
+
     now = dt.datetime.utcnow()
     nmn = dt.datetime.combine(now + dt.timedelta(days=1), dt.datetime.min.time()) #the next midnight
 
@@ -457,8 +461,6 @@ def xmatch_rm(tlist):
     '''Function to remove any transients from a list if they are too close to a target in a catalogue.
     Arguments:
         - tlist: array representing the targets with RA and DEC in column indices 3 and 4
-        - cat_coords: array containg two arrays which contain the catalogue targets' RA and DEC. Can be in "hh:mm:ss" "+/-ddmmss" format or decimal degrees using astropy units.
-        - sep_th: angular separation below which transients are removed (needs to be astropy units float)
     Outpts:
         - new_tlist: list of transients with the those to close to catalogue objects removed
     '''
@@ -673,7 +675,7 @@ def xmatch_rm(tlist):
                 #keep if the transient magnitude is brighter than galaxy magnitude
                 mask.append(True)
             else:
-                if entry[4] != False:
+                if entry[4] == None:
                     if entry[-2] <= 2:
                         #if no radius recorded and within 2" of host discard
                         mask.append(False)
@@ -781,49 +783,54 @@ def pscore(database,weights,moon_per):
         print("none")
         return t_array
 
-    #save remaining IDs
-    IDs = t_array.T[0]
+    if t_array.shape[0] == 1:
+        #if only one transient remains after cuts then don't calcuate pscore
+        pscores = np.array([[0]])
 
-    #convert strings into useable quantities
-    disc = np.array([dt.datetime.strptime(date, "%Y-%m-%d %H:%M:%S.%f") for date in t_array.T[5]])
-    #discovery dates as datetime objects
+    else:
+        #save remaining IDs
+        IDs = t_array.T[0]
 
-    mag = np.array(t_array.T[7],dtype="float") #magnitudes as floats
-    tobs = np.array(t_array.T[8],dtype="float") #observable time as decimal hour
-    lsep = np.array(t_array.T[9],dtype="float") #lunar separation as decimal angle
+        #convert strings into useable quantities
+        disc = np.array([dt.datetime.strptime(date, "%Y-%m-%d %H:%M:%S.%f") for date in t_array.T[5]])
+        #discovery dates as datetime objects
 
-    varbs = [tobs,lsep,mag,disc] #list containing the variables needed to calculate the pscores
+        mag = np.array(t_array.T[7],dtype="float") #magnitudes as floats
+        tobs = np.array(t_array.T[8],dtype="float") #observable time as decimal hour
+        lsep = np.array(t_array.T[9],dtype="float") #lunar separation as decimal angle
 
-    #makes a ordered list of each variable with their ID
-    ivarbs = []
-    for varb in varbs:
-    	I = np.concatenate((np.resize(IDs,(IDs.size,1)),np.resize(varb,(varb.size,1))),axis=1)
-    	#sort the array by ascending priority score (column index = -1)
-    	I = I[I[:, -1].argsort()]
-    	ivarbs.append(I)
+        varbs = [tobs,lsep,mag,disc] #list containing the variables needed to calculate the pscores
 
-    #calculate the pscores
-    pscores = []
-    sz = IDs.size
-    for ID in IDs:
-    	#looks for where the ID is in each of the sorted lists
-    	#then calculates its score by doing (size of the array - index)
-    	#this is so that high index IDs (i.e., higher values) get lower pscore which = higher priority
-    	scores = []
-    	scores.append(sz-np.where(ivarbs[0]==ID)[0][0])
-    	scores.append(sz-np.where(ivarbs[1]==ID)[0][0])
-    	scores.append(np.where(ivarbs[2]==ID)[0][0]) #no subtraction as we want the brightest objects (low mag)
-    	scores.append(sz-np.where(ivarbs[3]==ID)[0][0])
+        #makes a ordered list of each variable with their ID
+        ivarbs = []
+        for varb in varbs:
+        	I = np.concatenate((np.resize(IDs,(IDs.size,1)),np.resize(varb,(varb.size,1))),axis=1)
+        	#sort the array by ascending priority score (column index = -1)
+        	I = I[I[:, -1].argsort()]
+        	ivarbs.append(I)
 
-    	#combine scores for different variables into one and apply weightings
-    	score = sum(np.array(scores)*np.array(weights))
-    	#weights applied by multiplication so some variables will contribute more to the final score
+        #calculate the pscores
+        pscores = []
+        sz = IDs.size
+        for ID in IDs:
+        	#looks for where the ID is in each of the sorted lists
+        	#then calculates its score by doing (size of the array - index)
+        	#this is so that high index IDs (i.e., higher values) get lower pscore which = higher priority
+        	scores = []
+        	scores.append(sz-np.where(ivarbs[0]==ID)[0][0])
+        	scores.append(sz-np.where(ivarbs[1]==ID)[0][0])
+        	scores.append(np.where(ivarbs[2]==ID)[0][0]) #no subtraction as we want the brightest objects (low mag)
+        	scores.append(sz-np.where(ivarbs[3]==ID)[0][0])
 
-    	pscores.append(score)
-    pscores = np.array(pscores,dtype=int)
+        	#combine scores for different variables into one and apply weightings
+        	score = sum(np.array(scores)*np.array(weights))
+        	#weights applied by multiplication so some variables will contribute more to the final score
 
-    #normalise so scores are between 0 (high) and 5 (low)
-    pscores=((pscores-np.min(pscores))/np.max(pscores-np.min(pscores)) * 5)
+        	pscores.append(score)
+        pscores = np.array(pscores,dtype=int)
+
+        #normalise so scores are between 0 (high) and 5 (low)
+        pscores=((pscores-np.min(pscores))/np.max(pscores-np.min(pscores)) * 5)
 
     #concatenate the IDs, variables and the pscores
     t_targets = np.concatenate((t_array,np.resize(pscores,(pscores.size,1))),axis=1)
@@ -867,8 +874,8 @@ def priority_list(database,date,Slow=True):
         #set different times since modification/discovery for PEPPER Fast and Slow
         if Slow == False:
             rdate = dt.datetime.strptime(date, '%Y-%m-%d %H:%M:%S') #slice from date TNS updated
-            moddiff = rdate - dt.timedelta(days=2) #2 days ago
-            discdiff = rdate - dt.timedelta(weeks=8) #2 months ago (aka 8 weeks)
+            moddiff = rdate - dt.timedelta(days=3) #3 days ago
+            discdiff = rdate - dt.timedelta(weeks=1) #1 week ago
         else: #i.e., slow
             rdate = dt.datetime.combine(dt.datetime.now(), dt.datetime.min.time()) #slice from today at midnight
             moddiff = rdate - dt.timedelta(weeks=2) #2 weeks ago

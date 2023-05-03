@@ -2,35 +2,28 @@
 
 #line between log entries
 echo "" ; echo "-----------------------------------------------------" ; echo ""
-date -u #prints the date out for the log
 homedir=$(pwd) #the home directory to return to once module is finished
-
-#yesterday's date in utc
-yesterday=$(date -u --date="yesterday" +'%Y%m%d')
-ydDIR="zARCHIVE/${yesterday}"
-
-#check if pipeline has already run
-if [ -d  ${ydDIR} ]
-then
-  #if has then in test mode
-  echo "Test Mode"
-else
-  #if not then in normal mode so move yesterday's outputs to the archive
-  # makes folder for yesterday's outputs in archive and move them there
-  mkdir zARCHIVE/${yesterday}
-  mv xOUTPUTS/* zARCHIVE/${yesterday}
-  #move these back as they are live documents
-  mv zARCHIVE/${yesterday}/tns_public_objects.csv xOUTPUTS
-  mv zARCHIVE/${yesterday}/request_records.json xOUTPUTS
-  mv zARCHIVE/${yesterday}/observations.csv xOUTPUTS
-  #remove file indicating that LT connection failed (if exists)
-  rm ${homedir}/RITA/fail.txt
-fi
 
 ### BILLY ###
 cd ${homedir}/BILLY
-python tns_update.py #run python script to update the local TNS database
+python tns_update.py #run python script to update the local TNS database (+ delay)
 cd ${homedir}
+rm ${homedir}/xOUTPUTS/tns_public_objects_* #remove the update file
+
+#yesterday's date in utc
+date -u #prints the date out for the log
+yesterday=$(date -u --date="yesterday" +'%Y%m%d')
+ydDIR="zARCHIVE/${yesterday}"
+
+# makes folder for yesterday's outputs in archive and move them there
+mkdir zARCHIVE/${yesterday}
+mv xOUTPUTS/* zARCHIVE/${yesterday}
+#move these back as they are live documents
+mv zARCHIVE/${yesterday}/tns_public_objects.csv xOUTPUTS
+mv zARCHIVE/${yesterday}/request_records.json xOUTPUTS
+mv zARCHIVE/${yesterday}/observations.csv xOUTPUTS
+#remove file indicating that LT connection failed (if exists)
+rm ${homedir}/RITA/fail.txt
 
 ### LUCY ###
 cd ${homedir}/LUCY

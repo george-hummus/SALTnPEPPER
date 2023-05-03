@@ -42,36 +42,39 @@ plists.append(slowlist)
 plists.append(fastlist)
 
 ### Make the attachments and return paths ###
-htmlpath = f"{fastlist[0:-4]}.html"
-#make RA and DEC have "hours/degs : mins : secs" format
-fastDB.T[3], fastDB.T[4]  = LTcoords(fastDB.T[3], fastDB.T[4])
-#round numerical values in list to 5dp
-columns = (8,9,10,12) #indices of columns that need rounding
-for c in columns:
-    fastDB.T[c] = np.around(fastDB.T[c].astype(float),5)
 
-#add links to host name in HTML list
-hosts = fastDB.T[-3].astype(str)
-hsts = np.char.replace(hosts, '+', '%2B')
-hsts = np.char.replace(hsts, ' ', '+') #used to make NED links work
-hs = np.char.replace(hosts, 'None', '') #used to make None entries not clickable
-for p in range(hosts.size):
-    if "GLADE" in hosts[p]:
-        #if a glade name then link to ViziR
-        fastDB.T[-3][p] = '<a href=' + "http://vizier.cds.unistra.fr/viz-bin/VizieR-5?-ref=VIZ6450d83424009d&-out.add=.&-source=VII/291/gladep&recno=" +  hsts[p].split("+")[-1] + '><div>' + hsts[p] +'</div></a>'
-    else:
-        #if other name link to the NED
-        fastDB.T[-3][p] = '<a href=' + "https://ned.ipac.caltech.edu/byname?objname=" + hsts[p]  + '><div>' + hs[p] +'</div></a>'
-
-fastDB = fastDB.astype(str)
-array2html(headers,fastDB,htmlpath) #html table of fast list
 vispath = visplots(plists) #visiblity plots of highest priority targets in both lists
-
+htmlpath = f"{fastlist[0:-4]}.html" #path for HTML table (or message saying it doesn't exisit)
 
 if fastDB.size == 0:
     #if no transients met the requirements replace table with notice
     with open(htmlpath, "w") as file:
         file.write("<p><font color=#FF0000><em> No transients met the requirements for PEPPER Fast tonight. </em></font></p><br>")
+else:
+    #if are transients in list then make HTML table
+
+    #make RA and DEC have "hours/degs : mins : secs" format
+    fastDB.T[3], fastDB.T[4]  = LTcoords(fastDB.T[3], fastDB.T[4])
+    #round numerical values in list to 5dp
+    columns = (8,9,10,12) #indices of columns that need rounding
+    for c in columns:
+        fastDB.T[c] = np.around(fastDB.T[c].astype(float),5)
+
+    #add links to host name in HTML list
+    hosts = fastDB.T[-3].astype(str)
+    hsts = np.char.replace(hosts, '+', '%2B')
+    hsts = np.char.replace(hsts, ' ', '+') #used to make NED links work
+    hs = np.char.replace(hosts, 'None', '') #used to make None entries not clickable
+    for p in range(hosts.size):
+        if "GLADE" in hosts[p]:
+            #if a glade name then link to ViziR
+            fastDB.T[-3][p] = '<a href=' + "http://vizier.cds.unistra.fr/viz-bin/VizieR-5?-ref=VIZ6450d83424009d&-out.add=.&-source=VII/291/gladep&recno=" +  hsts[p].split("+")[-1] + '><div>' + hsts[p] +'</div></a>'
+        else:
+            #if other name link to the NED
+            fastDB.T[-3][p] = '<a href=' + "https://ned.ipac.caltech.edu/byname?objname=" + hsts[p]  + '><div>' + hs[p] +'</div></a>'
+
+    fastDB = fastDB.astype(str)
+    array2html(headers,fastDB,htmlpath) #html table of fast list
 
 if slowDB.size == 0:
     #if no targets in slow list there will be none is faste either

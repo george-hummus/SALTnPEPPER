@@ -19,6 +19,7 @@ with open('bot_info.json') as json_file:
 
 #delay - so new TNS databse is downloaded as soon as possible
 delay()
+print("Pipeline start")
 
 if not os.path.isfile("../xOUTPUTS/tns_public_objects.csv"):
 	#if there is no local database present download it from the TNS
