@@ -4,11 +4,8 @@
 echo "" ; echo "-----------------------------------------------------" ; echo ""
 homedir=$(pwd) #the home directory to return to once module is finished
 
-### BILLY ###
-cd ${homedir}/BILLY
-python tns_update.py #run python script to update the local TNS database (+ delay)
-cd ${homedir}
-rm ${homedir}/xOUTPUTS/tns_public_objects_* #remove the update file
+#delay until UTC midnight if runs before
+python delay.py
 
 #yesterday's date in utc
 date -u #prints the date out for the log
@@ -24,6 +21,11 @@ mv zARCHIVE/${yesterday}/request_records.json xOUTPUTS
 mv zARCHIVE/${yesterday}/observations.csv xOUTPUTS
 #remove file indicating that LT connection failed (if exists)
 rm ${homedir}/RITA/fail.txt
+
+### BILLY ###
+cd ${homedir}/BILLY
+python tns_update.py #run python script to update the local TNS database
+cd ${homedir}
 
 ### LUCY ###
 cd ${homedir}/LUCY
