@@ -49,13 +49,14 @@ else:
 
 			#date as string to find update file
 			ufile = f"tns_public_objects_{DB_date.strftime('%Y%m%d')}.csv"
+			dload(ufile,info)
 			next_day = DB_date+dt.timedelta(days=1)
 
 	    	#do the update for that date
 			UPdate(ufile,next_day,database)
 
 	    	#load new database that was just saved so it can be overwritten again
-			DBdate, headers, database = loadDB(DBname)
+			DBdate, headers, database = loadDB("../xOUTPUTS/tns_public_objects.csv")
 			DB_date = dt.datetime.strptime(DBdate, '%Y-%m-%d %H:%M:%S') #convert next date into datetime object
 
 	else:
