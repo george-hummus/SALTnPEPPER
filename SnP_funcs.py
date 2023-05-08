@@ -147,7 +147,7 @@ def delay():
     while now < later:
         now = dt.datetime.utcnow()
 
-    time.sleep(300) #wait 5 mins for TNS to release updates
+    time.sleep(600) #wait 10 mins for TNS to release updates
     return
 
 ################# FUNCTIONS FOR CALCULATING PRIORITY SCORES ####################
@@ -569,15 +569,6 @@ def xmatch_rm(tlist):
         #query hyper leda with name for the apparent radius
         appR, hosted = d25_from_HL(name,separ)
 
-        if appR == None:
-            #if no apparent radius found then query NED using coordinates for offical name
-            nedquery = Ned.query_region(gal, radius=1 * u.arcsec)
-            if len(nedquery) != 0:
-                #if there is a match in NED get new name
-                name = nedquery["Object Name"][0]
-                #query hyper leda with new name
-                appR, hosted = d25_from_HL(name,separ)
-
         return [name,Bmag,appR,separ.value,hosted]
 
 
@@ -735,7 +726,7 @@ def thresholds(DB,mill):
         m_th = 40
 
     #set magnitude thresholds
-    ml_th = 16 #lower threshold
+    ml_th = 12 #lower threshold
     mu_th = 18.5 #upper threshold
 
     #set the absolute value of the galactic latitude below which targets will be disregarded
@@ -748,7 +739,7 @@ def thresholds(DB,mill):
             bad_idx.append(idx)
         elif entry[9] < m_th: #check the lunar separation
             bad_idx.append(idx)
-        elif (float(entry[7]) <= ml_th) or (float(entry[7]) >= mu_th): #check magnitudes
+        elif (float(entry[7]) < ml_th) or (float(entry[7]) >= mu_th): #check magnitudes
             bad_idx.append(idx)
         elif abs(float(entry[10])) <= glat_th:
             bad_idx.append(idx) #check galactic latitude
