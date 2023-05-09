@@ -503,8 +503,13 @@ def xmatch_rm(tlist):
                     else:
                         #if letters in the name then no prefix needed
                         name = entry
-                else:
+
+                elif header = "_2MASS":
                     name = f"2MASX {entry}"
+
+                else:
+                    #deafult to GLADE name after 2MASS
+                    name = f"GLADE {str(xtable[0]['GLADE_'][host_idx])}"
 
                 break
 
