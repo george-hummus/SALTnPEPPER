@@ -504,7 +504,7 @@ def xmatch_rm(tlist):
                         #if letters in the name then no prefix needed
                         name = entry
 
-                elif header = "_2MASS":
+                elif header == "_2MASS":
                     name = f"2MASX {entry}"
 
                 else:
