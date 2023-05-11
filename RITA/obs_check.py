@@ -145,7 +145,7 @@ else:
                     fname_root = f"{split_fname[1]}_{split_fname[2]}_{split_fname[3]}"
 
                 #add target's info to list
-                observations.append([yesterday.strftime('%Y-%m-%d'), propid, groupid, target[0][0:2],target[0][2:],observed,pc,fname_root])
+                observations.append([yesterday.strftime('%Y-%m-%d'), propid, groupid, target[0][0:2],target[0][2:],observed,fname_root])
 
             #save observations array to the CSV containing info on all data at top and headers
             with open(f"../xOUTPUTS/observations.csv",'a') as obs:

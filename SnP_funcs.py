@@ -8,6 +8,7 @@ Author: George Hume
 ### IMPORTS ###
 import csv
 import json
+import time
 import numpy as np
 import datetime as dt
 from skyfield import almanac
@@ -17,11 +18,17 @@ from skyfield.framelib import galactic_frame
 import subprocess
 from astropy import units as u
 from astropy.coordinates import SkyCoord
+import warnings #stops warning re: deprecation
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore")
+    from astroquery.vizier import Vizier
+    from astroquery.ipac.ned import Ned
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import os
 import glob
+import requests
 import ltrtml
 
 ################# FUNCTIONS FOR UPDATING TNS DATABASE ##########################
@@ -119,7 +126,31 @@ def UPdate(ufile,date,database):
         csvwriter.writerow([date.strftime('%Y-%m-%d %H:%M:%S')]) #add date to first row
         csvwriter.writerows(database)
 
-################# FUNCTIONS FOR CALCULATING PRIORITY SCORES ##########################
+################################################################################
+
+def delay():
+    """
+    Incduces a delay in the code until the next midnight if it is less than 14hrs in the future. This allows downloading of the TNS updates as close as possible to when they are released.
+    """
+
+    now = dt.datetime.utcnow()
+    nmn = dt.datetime.combine(now + dt.timedelta(days=1), dt.datetime.min.time()) #the next midnight
+
+    #find time to next midnight
+    t_diff = (nmn-now).total_seconds()/3600 #time in hrs to next midnight
+    if t_diff < 14:
+        later = nmn #if less than 14 hours to next midnight then wait
+    else: #if more than 14 hours then likely haven't downloaded new TNS yet
+        return  # no delay - download ASAP
+
+    #delay until later
+    while now < later:
+        now = dt.datetime.utcnow()
+
+    time.sleep(600) #wait 10 mins for TNS to release updates
+    return
+
+################# FUNCTIONS FOR CALCULATING PRIORITY SCORES ####################
 
 def TNSlice(database,date):
     """
@@ -426,11 +457,263 @@ def Visibility(ra, dec, lat, long, elv, ephm = 'de421.bsp'):
 
 ################################################################################
 
+def xmatch_rm(tlist):
+    '''Function to remove any transients from a list if they are too close to a target in a catalogue.
+    Arguments:
+        - tlist: array representing the targets with RA and DEC in column indices 3 and 4
+    Outpts:
+        - new_tlist: list of transients with the those to close to catalogue objects removed
+    '''
+
+    ### Internal Functions ###
+    def host_name(xtable,host_idx):
+        """
+        Finds name of host galaxy that cross-mathced with a transient.
+        Arguments:
+            - xtable: table produced by query to ViziR
+            - host_idx: index of the host in the in xtable
+        Output:
+            - name: name of the host galaxy as a string
+        """
+        #names of the columns headers
+        namecols = xtable[0].colnames[1:]
+
+        for header in namecols:
+
+            entry = str(xtable[0][header][host_idx])
+
+            if (entry == "-") or (entry == "--"):
+                if header == "WISExSCOS":
+                    #deafult to GLADE name after 2MASS
+                    name = f"GLADE {str(xtable[0]['GLADE_'][host_idx])}"
+                else:
+                    #go to next column
+                    continue
+            else:
+                if header == "PGC":
+                    name = f"{header} {entry}"
+
+                elif header == "GWGC":
+                    name = entry
+
+                elif header == "HyperLEDA":
+                    if entry.isdigit():
+                        #if the name is a set of digits then need LEDA prefix
+                        name = f"LEDA {entry}"
+                    else:
+                        #if letters in the name then no prefix needed
+                        name = entry
+
+                elif header == "_2MASS":
+                    name = f"2MASX {entry}"
+
+                else:
+                    #deafult to GLADE name after 2MASS
+                    name = f"GLADE {str(xtable[0]['GLADE_'][host_idx])}"
+
+                break
+
+        return name
+
+    def d25_from_HL(host_name, sep):
+        """
+        Queries Hyper LEDA to find the apparent radius of a galaxy and then checks if hosts a transient.
+        Arguments:
+            - host_name: the name of the galaxy
+            - sep: the separtion of the transient to the galaxy in Astropy units of angle
+        Outputs:
+            - appR: the apparent radius of the galaxy in arcsecs as a float (set to None if no radius found)
+            - hosted: boolean indicating if transient resides within radius of galaxy (set to None if no radius found)
+        """
+
+        #download whole html code for object page in HyperLEDA website
+        r = requests.get(f"https://leda.univ-lyon1.fr/ledacat.cgi?o={host_name}")
+        HLtxt = r.text
+        #slice out the logd25 value (log of apparent diameter, where d25 is in 0.1 arcmin)
+        if HLtxt.find(">logd25<") != -1: #if can find d25 value
+            logd25 = float(HLtxt[HLtxt.find(">logd25<"):HLtxt.find("</td><td>log(0.1 arcmin)")].split()[1])
+            appR = (10**(logd25-1) * u.arcmin)/2 #apparent radius (hence divide by 2)
+
+            if sep > appR:
+                hosted = False
+            else:
+                hosted = True
+
+            appR = appR.to(u.arcsec).value
+
+        else: #if cannot find a d25 value
+            appR = None
+            hosted = None
+
+        return appR, hosted
+
+    def gal_info(xmatch,idx):
+        """
+        Returns properties of a galaxy from an Astroquery VizieR table.
+        Arguments:
+            - xmatch: the Astroquery VizieR table produced via cross-match with a transient
+            - idx: the index of the galaxy within the table
+        Outputs:
+            - name: name of the galaxy
+            - Bmag: the B-band apparent magnitude of the galaxy
+            - appR: the apparent radius of the galaxy in arcseconds from Hyper LEDA (set to None if no radius found)
+            - separ: the separtion between the galaxy and the transient in arcseconds
+            - hosted: boolean indicating if transient resides within radius of galaxy (set to None if no radius found)
+
+        Note - function returns outputs as a list.
+        """
+        #galaxy object
+        gRA = xmatch[0]["RAJ2000"][idx]
+        gDEC = xmatch[0]["DEJ2000"][idx]
+        gal = SkyCoord(ra=gRA*u.deg,dec=gDEC*u.deg)
+
+        separ = t.separation(gal).to(u.arcsec)
+        Bmag = xmatch[0]["Bmag"][idx]
+        name = host_name(xmatch,idx)
+
+        #query hyper leda with name for the apparent radius
+        appR, hosted = d25_from_HL(name,separ)
+
+        return [name,Bmag,appR,separ.value,hosted]
+
+
+    ## Transients ##
+    #names of the transients
+    tnames = tlist.T[1]+tlist.T[2]
+
+    #magnitudes of transients
+    tmags = tlist.T[7].astype(float)
+
+    #extract ra and dec of transients
+    RAs, DECs = tlist.T[3].astype(float), tlist.T[4].astype(float)
+
+    #make skycoords object of the transients in list
+    transients = SkyCoord(ra=RAs*u.deg,dec=DECs*u.deg)
+
+
+    ## Cross Matching ##
+    Xmatches = []
+    for idx, t in enumerate(transients):
+
+        #cross-match with GLADE+ catalogue via VizieR
+        xmatch = Vizier.query_region(t, radius = 1*u.arcmin, catalog = 'VII/291/gladep')
+
+        if len(xmatch) == 0: #if there is no match within 1 arcmin
+            Xmatches.append([tnames[idx],tmags[idx],None,None,None,None,None])
+
+        else: #if there is a match within 1 arcmin
+
+            if len(xmatch[0]) == 1: #if only one match
+                #find info for that galaxy
+                galaxy = gal_info(xmatch,0)
+
+            else: #if more than one loop through all that matched
+                galaxies = []
+
+                for g in range(len(xmatch[0])):
+
+                    #find info of particular galaxy
+                    G = gal_info(xmatch,g)
+                    galaxies.append(G) #add info to list
+
+
+
+                #convert galaxies list to array for masking
+                g_array = np.array(galaxies,dtype=object)
+
+
+                #mask to extract galaxies with hosted=True
+                host_mask = g_array.T[-1] == True
+                #apply mask to get galaxies that host transient
+                host_gals = g_array[host_mask]
+
+                if host_gals.shape[0] != 0:
+                #if there are host galaxies pick one with lowest sep
+                    g_IDX = host_gals.T[3].argmin() #index of lowest sep galaxy
+                    galaxy = list(host_gals[g_IDX])
+
+                else:
+                #if no host galaxies remove any known not to host transient
+                    ukwn_mask = g_array.T[-1] != False #mask for above task
+                    #apply mask leaving only galaxies didn't get radii for
+                    ukwn_gals = g_array[ukwn_mask]
+
+                    if ukwn_gals.shape[0] != 0:
+                    #if there are galaxies didn't get radii for pick lowest sep galaxy
+                        g_IDX = ukwn_gals.T[3].argmin() #index of lowest sep galaxy
+                        galaxy = list(ukwn_gals[g_IDX])
+
+                    else:
+                    #if only galaxies known not to host pick lowest sep one
+                        g_IDX = g_array.T[3].argmin()
+                        galaxy = list(g_array[g_IDX])
+
+
+            #add transient name and magnitude infront of galaxy's info
+            galaxy.insert(0,tnames[idx])
+            galaxy.insert(1,tmags[idx])
+
+            #add list to cross-matches
+            Xmatches.append(galaxy)
+
+
+    Xmatches = np.array(Xmatches,dtype=object)
+
+    ## thresholding ##
+    mask = []
+    for entry in Xmatches:
+        if entry[2] == None:
+            #discard if there is no match
+            mask.append(False)
+        else:
+            #if is host compare magnitudes
+            if entry[1] < entry[3]:
+                #keep if the transient magnitude is brighter than galaxy magnitude
+                mask.append(True)
+            else:
+                if entry[4] == None:
+                    if entry[-2] <= 2:
+                        #if no radius recorded and within 2" of host discard
+                        mask.append(False)
+                    else:
+                        #if is radius but larger sep than seeing limit then keep
+                        mask.append(True)
+                elif entry[4] == False:
+                    #if galaxy likely doesn't host transient then discard
+                    mask.append(False)
+                else:
+                    #compare radius and separation
+                    if entry[-2] <= (0.25*entry[4] + 2):
+                        #discard if target within 25% of radius from galaxy centre
+                        #plus 2" to account for seeing
+                        mask.append(False)
+                    else:
+                        #otherwise keep
+                        mask.append(True)
+
+    #apply mask to tlist to remove unwanted entries
+    th_list = tlist[mask]
+
+    #apply mask to list of offical names to get possible hosts
+    new_Xmatches = Xmatches[mask]
+    hosts = []
+    for entry in new_Xmatches:
+        if entry[-1] != False:
+            hosts.append(entry[2])
+        else:
+            hosts.append(None)
+    hosts = np.array(hosts,dtype="str")
+
+    #return new list with possible hosts in second to last columns (before internal name)
+    return np.concatenate((th_list,np.resize(hosts,(hosts.size,1))),axis=1)
+
+################################################################################
+
 def thresholds(DB,mill):
     """
     Removes targets from a database if they don't meet the thresholds of 3 different variables - observable time, lunar separation, and discovery magnitude.
 	Arguments:
-    	- DB: numpy object array of the list of targets with discovery magnitude, observable time, and lunar separation in column indices -4, -3, and -2 respectively.
+    	- DB: numpy object array of the list of targets with RA, Dec, discovery magnitude, observable time, and lunar separation in column indices 3, 4, -4, -3, and -2 respectively.
     	- mill: the illumination percentage of the moon as a float
 	Output:
     	- t_array: same database as ingested but with transients removed that don't meet the thresholds set.
@@ -448,7 +731,7 @@ def thresholds(DB,mill):
         m_th = 40
 
     #set magnitude thresholds
-    ml_th = 16 #lower threshold
+    ml_th = 12 #lower threshold
     mu_th = 18.5 #upper threshold
 
     #set the absolute value of the galactic latitude below which targets will be disregarded
@@ -461,12 +744,17 @@ def thresholds(DB,mill):
             bad_idx.append(idx)
         elif entry[9] < m_th: #check the lunar separation
             bad_idx.append(idx)
-        elif (float(entry[7]) <= ml_th) or (float(entry[7]) >= mu_th): #check magnitudes
+        elif (float(entry[7]) < ml_th) or (float(entry[7]) >= mu_th): #check magnitudes
             bad_idx.append(idx)
         elif abs(float(entry[10])) <= glat_th:
             bad_idx.append(idx) #check galactic latitude
-    t_array = np.delete(DB,bad_idx,0) #deletes rows with no observable time
+    th_list = np.delete(DB,bad_idx,0) #deletes rows with no observable time
 
+    ## Galaxy separations ##
+    #execute galaxy separation thresholding
+    t_array = xmatch_rm(th_list)
+
+    #return with possible hosts added to end
     return t_array
 
 ################################################################################
@@ -491,49 +779,54 @@ def pscore(database,weights,moon_per):
         print("none")
         return t_array
 
-    #save remaining IDs
-    IDs = t_array.T[0]
+    if t_array.shape[0] == 1:
+        #if only one transient remains after cuts then don't calcuate pscore
+        pscores = np.array([[0]])
 
-    #convert strings into useable quantities
-    disc = np.array([dt.datetime.strptime(date, "%Y-%m-%d %H:%M:%S.%f") for date in t_array.T[5]])
-    #discovery dates as datetime objects
+    else:
+        #save remaining IDs
+        IDs = t_array.T[0]
 
-    mag = np.array(t_array.T[7],dtype="float") #magnitudes as floats
-    tobs = np.array(t_array.T[8],dtype="float") #observable time as decimal hour
-    lsep = np.array(t_array.T[9],dtype="float") #lunar separation as decimal angle
+        #convert strings into useable quantities
+        disc = np.array([dt.datetime.strptime(date, "%Y-%m-%d %H:%M:%S.%f") for date in t_array.T[5]])
+        #discovery dates as datetime objects
 
-    varbs = [tobs,lsep,mag,disc] #list containing the variables needed to calculate the pscores
+        mag = np.array(t_array.T[7],dtype="float") #magnitudes as floats
+        tobs = np.array(t_array.T[8],dtype="float") #observable time as decimal hour
+        lsep = np.array(t_array.T[9],dtype="float") #lunar separation as decimal angle
 
-    #makes a ordered list of each variable with their ID
-    ivarbs = []
-    for varb in varbs:
-    	I = np.concatenate((np.resize(IDs,(IDs.size,1)),np.resize(varb,(varb.size,1))),axis=1)
-    	#sort the array by ascending priority score (column index = -1)
-    	I = I[I[:, -1].argsort()]
-    	ivarbs.append(I)
+        varbs = [tobs,lsep,mag,disc] #list containing the variables needed to calculate the pscores
 
-    #calculate the pscores
-    pscores = []
-    sz = IDs.size
-    for ID in IDs:
-    	#looks for where the ID is in each of the sorted lists
-    	#then calculates its score by doing (size of the array - index)
-    	#this is so that high index IDs (i.e., higher values) get lower pscore which = higher priority
-    	scores = []
-    	scores.append(sz-np.where(ivarbs[0]==ID)[0][0])
-    	scores.append(sz-np.where(ivarbs[1]==ID)[0][0])
-    	scores.append(np.where(ivarbs[2]==ID)[0][0]) #no subtraction as we want the brightest objects (low mag)
-    	scores.append(sz-np.where(ivarbs[3]==ID)[0][0])
+        #makes a ordered list of each variable with their ID
+        ivarbs = []
+        for varb in varbs:
+        	I = np.concatenate((np.resize(IDs,(IDs.size,1)),np.resize(varb,(varb.size,1))),axis=1)
+        	#sort the array by ascending priority score (column index = -1)
+        	I = I[I[:, -1].argsort()]
+        	ivarbs.append(I)
 
-    	#combine scores for different variables into one and apply weightings
-    	score = sum(np.array(scores)*np.array(weights))
-    	#weights applied by multiplication so some variables will contribute more to the final score
+        #calculate the pscores
+        pscores = []
+        sz = IDs.size
+        for ID in IDs:
+        	#looks for where the ID is in each of the sorted lists
+        	#then calculates its score by doing (size of the array - index)
+        	#this is so that high index IDs (i.e., higher values) get lower pscore which = higher priority
+        	scores = []
+        	scores.append(sz-np.where(ivarbs[0]==ID)[0][0])
+        	scores.append(sz-np.where(ivarbs[1]==ID)[0][0])
+        	scores.append(np.where(ivarbs[2]==ID)[0][0]) #no subtraction as we want the brightest objects (low mag)
+        	scores.append(sz-np.where(ivarbs[3]==ID)[0][0])
 
-    	pscores.append(score)
-    pscores = np.array(pscores,dtype=int)
+        	#combine scores for different variables into one and apply weightings
+        	score = sum(np.array(scores)*np.array(weights))
+        	#weights applied by multiplication so some variables will contribute more to the final score
 
-    #normalise so scores are between 0 (high) and 5 (low)
-    pscores=((pscores-np.min(pscores))/np.max(pscores-np.min(pscores)) * 5)
+        	pscores.append(score)
+        pscores = np.array(pscores,dtype=int)
+
+        #normalise so scores are between 0 (high) and 5 (low)
+        pscores=((pscores-np.min(pscores))/np.max(pscores-np.min(pscores)) * 5)
 
     #concatenate the IDs, variables and the pscores
     t_targets = np.concatenate((t_array,np.resize(pscores,(pscores.size,1))),axis=1)
@@ -577,8 +870,8 @@ def priority_list(database,date,Slow=True):
         #set different times since modification/discovery for PEPPER Fast and Slow
         if Slow == False:
             rdate = dt.datetime.strptime(date, '%Y-%m-%d %H:%M:%S') #slice from date TNS updated
-            moddiff = rdate - dt.timedelta(days=2) #2 days ago
-            discdiff = rdate - dt.timedelta(weeks=8) #2 months ago (aka 8 weeks)
+            moddiff = rdate - dt.timedelta(days=3) #3 days ago
+            discdiff = rdate - dt.timedelta(weeks=1) #1 week ago
         else: #i.e., slow
             rdate = dt.datetime.combine(dt.datetime.now(), dt.datetime.min.time()) #slice from today at midnight
             moddiff = rdate - dt.timedelta(weeks=2) #2 weeks ago
@@ -650,7 +943,7 @@ def priority_list(database,date,Slow=True):
 
 
         # urls to last column #
-        int_names = pDB.T[-2] # locally saved internal names of targets
+        int_names = pDB.T[-3] # locally saved internal names of targets
 
 
         #make the url by finding the ZTF name (if it exsists)
@@ -686,7 +979,7 @@ def priority_list(database,date,Slow=True):
 
 
         # combine together and array #
-        targets = np.delete(pDB.T,-2,0).T #remove internal name column
+        targets = np.delete(pDB.T,-3,0).T #remove internal name column
         targets = np.concatenate((targets,np.resize(urls,(urls.size,1))),axis=1) #add urls to databse
 
         return targets

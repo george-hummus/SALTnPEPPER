@@ -21,7 +21,7 @@ from SnP_funcs import loadDB, flatten, priority_list
 # loads in the tns database as numpy array along with the date it was released as a string and a list of the headers
 date, headers, database = loadDB("../xOUTPUTS/tns_public_objects.csv")
 #create a new list of headers for the new database (as have removed columns and added new ones)
-newHeaders = flatten([headers[0:5], [headers[12], headers[-1],headers[13], "observable_time", "lunar_sep", "galactic_latitude", "priority_score", "fink_url"]])
+newHeaders = flatten([headers[0:5], [headers[12], headers[-1],headers[13], "observable_time", "lunar_sep", "galactic_latitude", "possible_host","priority_score", "fink_url"]])
 
 #line to go before headers to give context in CSV
 Tday = dt.datetime.combine(dt.datetime.now(), dt.datetime.min.time()) #today's data at turn of the day
