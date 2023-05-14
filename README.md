@@ -12,11 +12,10 @@
 ![Flow chart of the structure of SALT&PEPPER](SnP-structure.png)
 
 ### Instructions
-- Copy the whole file structure to your device.
+- Clone this repository.
 - Fill out the credential files ("bot_info.json", "email_creds.json", "LT_creds.json", and "LTarchive_creds.json") with the required information.
-- Specifiy the observational parameters in the "obs_prams.json" file.
-- Add any email addresses to receive alerts in "correspondents.csv" (one per line!)
-- Install the required packages using requirements.txt via `pip install -r requirements.txt`.
+- Specify the observational parameters in the "obs_prams.json" file.
+- Add any email addresses to “correspondents.csv” (one per line) which will receive the daily alerts.
+- Install the packages required to run the pipeline via: `pip install -r requirements.txt`.
 - Download `ltrtml` from [here](https://github.com/LivTel/ltpy) and put "ltrtml.py" in the base SALT&PEPPER directory.
-- `chmod +x SnP`
-- Use cron tab to automate SALT&PEPPER to run every night. E.g., `00 22 * * * cd {your path to SALT&PEPPER directory}; bash SnP >> SnP.log 2>&1` will run SALT&PEPPER every day at 22:00 local time and add outputs to a log. Note, a built-in delay means pipeline won't start until after 00:00 UTC when the TNS updates are released.
+- Use `crontab` to run SALT&PEPPER daily. E.g., `00 22 * * * cd {your path to SALT&PEPPER directory}; bash SnP >> SnP.log 2>&1` will run the pipeline every day at 22:00 local time and add any outputs to the log. Note, a built-in delay means the pipeline will not start until after 00:00 UTC when the TNS updates are released.
